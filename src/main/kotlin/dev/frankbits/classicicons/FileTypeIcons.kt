@@ -9,7 +9,7 @@ import javax.swing.Icon
  * Original-Pfad (IconPathProvider.originalPath) ist genau der Pfad, den der Patcher später sieht.
  */
 object FileTypeIcons {
-    data class Entry(val typeName: String, val icon: Icon, val path: String)
+    data class Entry(val typeName: String, val icon: Icon, val path: String, val extension: String)
 
     @Volatile
     var entries: List<Entry> = emptyList()
@@ -25,7 +25,8 @@ object FileTypeIcons {
         val found = FileTypeManager.getInstance().registeredFileTypes.mapNotNull { type ->
             val icon = type.icon ?: return@mapNotNull null
             val path = (icon as? IconPathProvider)?.originalPath ?: return@mapNotNull null
-            Entry(type.name, icon, "/" + path.removePrefix("/"))
+            val extension = type.defaultExtension ?: ""
+            Entry(type.name, icon, "/" + path.removePrefix("/"), extension)
         }.sortedBy { it.typeName.lowercase() }
 
         if (found.map { it.typeName to it.path } == entries.map { it.typeName to it.path }) return false

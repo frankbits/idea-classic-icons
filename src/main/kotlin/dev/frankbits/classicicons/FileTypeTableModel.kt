@@ -4,21 +4,21 @@ import javax.swing.Icon
 import javax.swing.table.AbstractTableModel
 
 class FileTypeTableModel : AbstractTableModel() {
-    class Row(val name: String, val icon: Icon, val path: String, var classic: Boolean)
+    class Row(val name: String, val icon: Icon, val path: String, val extension: String, var classic: Boolean)
 
     private var rows: List<Row> = emptyList()
 
     fun load(excluded: Collection<String>) {
         val ex = excluded.toSet()
-        rows = FileTypeIcons.entries.map { Row(it.typeName, it.icon, it.path, it.typeName !in ex) }
+        rows = FileTypeIcons.entries.map { Row(it.typeName, it.icon, it.path, it.extension, it.typeName !in ex) }
         fireTableDataChanged()
     }
 
     fun excluded(): Set<String> = rows.filter { !it.classic }.map { it.name }.toSet()
 
     override fun getRowCount() = rows.size
-    override fun getColumnCount() = 4
-    override fun getColumnName(column: Int) = arrayOf("Classic", "Icon", "File type", "Icon path")[column]
+    override fun getColumnCount() = 5
+    override fun getColumnName(column: Int) = arrayOf("Classic", "Icon", "File type", "Extension", "Icon path")[column]
 
     override fun getColumnClass(columnIndex: Int): Class<*> = when (columnIndex) {
         0 -> Boolean::class.javaObjectType
@@ -33,6 +33,7 @@ class FileTypeTableModel : AbstractTableModel() {
             0 -> it.classic
             1 -> it.icon
             2 -> it.name
+            3 -> it.extension
             else -> it.path
         }
     }

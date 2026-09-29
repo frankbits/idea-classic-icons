@@ -13,8 +13,10 @@ import com.intellij.ui.dsl.builder.bind
 import com.intellij.ui.dsl.builder.bindText
 import com.intellij.ui.dsl.builder.panel
 import com.intellij.ui.table.JBTable
+import java.awt.Color
 import java.awt.Dimension
 import java.util.regex.Pattern
+import javax.swing.BorderFactory
 import javax.swing.RowFilter
 import javax.swing.event.DocumentEvent
 import javax.swing.table.TableRowSorter
@@ -33,12 +35,17 @@ class ClassicIconsConfigurable : BoundConfigurable("Classic Icons") {
             rowSorter = sorter
             columnModel.getColumn(0).maxWidth = 70
             columnModel.getColumn(1).maxWidth = 50
+            columnModel.getColumn(3).maxWidth = 100
             preferredScrollableViewportSize = Dimension(600, 220)
+            
+            // Auto-resize columns based on content
+            autoResizeMode = JBTable.AUTO_RESIZE_ALL_COLUMNS
+            
             filterField.document.addDocumentListener(object : DocumentAdapter() {
                 override fun textChanged(e: DocumentEvent) {
                     val text = filterField.text.trim()
                     sorter.rowFilter =
-                        if (text.isEmpty()) null else RowFilter.regexFilter("(?i)" + Pattern.quote(text), 2, 3)
+                        if (text.isEmpty()) null else RowFilter.regexFilter("(?i)" + Pattern.quote(text), 2, 3, 4)
                 }
             })
         }
@@ -53,12 +60,12 @@ class ClassicIconsConfigurable : BoundConfigurable("Classic Icons") {
             group("File types (mode \"files and folders\")") {
                 row("Filter:") { cell(filterField).align(AlignX.FILL) }
                 row { scrollCell(table).align(Align.FILL) }
-                row { comment("Detected from the registered file types. Untick a file type to keep its New UI icon.") }
+                row { comment("Detected from the registered file types. Untick a file type to keep its New UI icon. Filter by file type name, extension, or icon path.") }
             }
 
             collapsibleGroup("Advanced: additional path filters") {
                 row {
-                    cell(JBTextArea(4, 40))
+                    cell(JBTextArea(4, 40).apply { border = BorderFactory.createLineBorder(Color.GRAY) })
                         .align(AlignX.FILL)
                         .bindText(settings::extraFilters)
                 }
