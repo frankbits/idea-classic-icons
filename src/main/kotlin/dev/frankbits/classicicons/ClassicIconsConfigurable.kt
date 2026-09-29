@@ -26,7 +26,10 @@ class ClassicIconsConfigurable : BoundConfigurable("Classic Icons") {
 
     private val tableModel by lazy {
         FileTypeIcons.refresh()
-        FileTypeTableModel().also { it.load(settings.excludedFileTypes) }
+        FileTypeTableModel().also { 
+            it.load(settings.excludedFileTypes, settings.customPathFilters, settings.scope != IconScope.DISABLED)
+            it.setCustomIconsDir(settings.customIconsDir)
+        }
     }
 
     override fun createPanel(): DialogPanel {
@@ -35,12 +38,17 @@ class ClassicIconsConfigurable : BoundConfigurable("Classic Icons") {
             rowSorter = sorter
             columnModel.getColumn(0).maxWidth = 70
             columnModel.getColumn(1).maxWidth = 50
+<<<<<<< HEAD
             columnModel.getColumn(3).maxWidth = 100
             preferredScrollableViewportSize = Dimension(600, 220)
             
             // Auto-resize columns based on content
             autoResizeMode = JBTable.AUTO_RESIZE_ALL_COLUMNS
             
+=======
+            columnModel.getColumn(5).maxWidth = 150
+            preferredScrollableViewportSize = Dimension(800, 220)
+>>>>>>> c3fac44 (Implement live custom icon preview from icon pack)
             filterField.document.addDocumentListener(object : DocumentAdapter() {
                 override fun textChanged(e: DocumentEvent) {
                     val text = filterField.text.trim()
@@ -92,18 +100,22 @@ class ClassicIconsConfigurable : BoundConfigurable("Classic Icons") {
     private val filterField = JBTextField()
 
     override fun isModified(): Boolean =
-        super.isModified() || tableModel.excluded() != settings.excludedFileTypes.toSet()
+        super.isModified() || tableModel.excluded() != settings.excludedFileTypes.toSet() ||
+        tableModel.customPathFilters() != settings.customPathFilters
 
     override fun apply() {
         super.apply()
         settings.excludedFileTypes = tableModel.excluded().toMutableList()
+        settings.customPathFilters = tableModel.customPathFilters().toMutableMap()
         tableModel.setUseClassic(settings.scope != IconScope.DISABLED)
+        tableModel.setCustomIconsDir(settings.customIconsDir)
         ClassicIconPatcher.refreshUi()
     }
 
     override fun reset() {
         super.reset()
-        tableModel.load(settings.excludedFileTypes)
+        tableModel.load(settings.excludedFileTypes, settings.customPathFilters, settings.scope != IconScope.DISABLED)
+        tableModel.setCustomIconsDir(settings.customIconsDir)
         tableModel.setUseClassic(settings.scope != IconScope.DISABLED)
     }
 }

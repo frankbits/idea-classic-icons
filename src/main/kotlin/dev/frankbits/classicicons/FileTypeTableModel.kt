@@ -1,5 +1,7 @@
 package dev.frankbits.classicicons
 
+import com.intellij.openapi.util.IconLoader
+import java.io.File
 import javax.swing.Icon
 import javax.swing.table.AbstractTableModel
 
@@ -18,6 +20,7 @@ class FileTypeTableModel : AbstractTableModel() {
 >>>>>>> 8ca4f33 (Add custom path filters column with per-file-type filters)
 
     private var rows: List<Row> = emptyList()
+    private var customIconsDir: String = ""
     private var useClassicIcons: Boolean = true
 
     fun load(excluded: Collection<String>, customPathFilters: Map<String, String> = emptyMap(), useClassic: Boolean = true) {
@@ -35,6 +38,11 @@ class FileTypeTableModel : AbstractTableModel() {
 
     fun setUseClassic(useClassic: Boolean) {
         this.useClassicIcons = useClassic
+        fireTableDataChanged()
+    }
+
+    fun setCustomIconsDir(dir: String) {
+        this.customIconsDir = dir
         fireTableDataChanged()
     }
 
@@ -82,8 +90,29 @@ class FileTypeTableModel : AbstractTableModel() {
 
     private fun getEffectiveIcon(rowIndex: Int): Icon {
         val row = rows[rowIndex]
+        
+        // If classic mode is disabled, show the original icon
         if (!useClassicIcons) return row.icon
+        
+        // If this file type is excluded from classic icons, show original
         if (!row.classic) return row.icon
+        
+        // Check for custom icon from pack
+        if (customIconsDir.isNotBlank()) {
+            val rel = row.path.removePrefix("/")
+            val exact = File(customIconsDir, rel)
+            if (exact.isFile) {
+                return IconLoader.findIcon("${exact.toURI()}", javaClass.classLoader) ?: row.icon
+            }
+            val base = rel.substringBeforeLast('.', rel)
+            for (ext in listOf("svg", "png")) {
+                val f = File(customIconsDir, "$base.$ext")
+                if (f.isFile) {
+                    return IconLoader.findIcon("${f.toURI()}", javaClass.classLoader) ?: row.icon
+                }
+            }
+        }
+        
         return row.icon
     }
 
