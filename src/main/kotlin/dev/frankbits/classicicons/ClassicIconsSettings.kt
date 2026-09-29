@@ -2,15 +2,22 @@ package dev.frankbits.classicicons
 
 import com.intellij.openapi.components.*
 
-enum class IconScope { ALL, FILES_AND_FOLDERS }
+enum class IconScope { DISABLED, ALL, FILES_AND_FOLDERS }
 
 @Service(Service.Level.APP)
 @State(name = "ClassicIconsSettings", storages = [Storage("classicIcons.xml")])
 class ClassicIconsSettings : PersistentStateComponent<ClassicIconsSettings.State> {
     class State {
         var scope: IconScope = IconScope.ALL
+
         /** Zusätzliche Pfad-Teile (ein Eintrag pro Zeile), die im Modus "Files and folders" als Datei-Icons zählen. */
-        var extraFilters: String = "MarkdownPlugin"
+        var extraFilters: String = ""
+
+        /** Ordner mit eigenen Icons; Struktur spiegelt die Original-Icon-Pfade (z. B. fileTypes/java.svg). */
+        var customIconsDir: String = ""
+
+        /** Dateitypen (Name), deren Icon im Modus "Files and folders" NICHT klassisch sein soll. */
+        var excludedFileTypes: MutableList<String> = mutableListOf()
     }
 
     private var state = State()
