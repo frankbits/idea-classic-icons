@@ -11,11 +11,11 @@ import java.io.File
  * Die New UI mappt ORIGINALPFADE (alte Pfade, z. B. "/nodes/folder.svg" oder "/icons/MarkdownPlugin.svg")
  * per Patcher auf die neuen Pfade. Bei normalen Patchern gewinnt der erste, der nicht null liefert.
  * Wir sind vor dem Theme-Patcher installiert und geben
- *  1. für Icons aus dem eigenen Icon-Pack-Ordner eine file:-URL zurück,
- *  2. für Icons, die es im alten Pfad noch gibt, den Originalpfad zurück.
+ *  1. f\u00fcr Icons aus dem eigenen Icon-Pack-Ordner eine file:-URL zur\u00fcck,
+ *  2. f\u00fcr Icons, die es im alten Pfad noch gibt, den Originalpfad zur\u00fcck.
  */
 object ClassicIconPatcher : IconPathPatcher() {
-    /** Anfänge der Originalpfade, die zur "Ordnerstruktur" zählen (nur im Modus "Files and folders"). */
+    /** Anf\u00e4nge der Originalpfade, die zur "Ordnerstruktur" z\u00e4hlen (nur im Modus "Files and folders"). */
     private val FILES_AND_FOLDERS = listOf("/fileTypes/", "/nodes/", "/modules/")
 
     override fun patchPath(path: String, classLoader: ClassLoader?): String? {
@@ -54,7 +54,18 @@ object ClassicIconPatcher : IconPathPatcher() {
         FileTypeIcons.typesFor(path)?.let { types ->
             if (types.any { it !in state.excludedFileTypes }) return true
         }
-        return state.extraFilters.lineSequence().map { it.trim() }.filter { it.isNotEmpty() }.any { path.contains(it) }
+        if (state.extraFilters.lineSequence().map { it.trim() }.filter { it.isNotEmpty() }.any { path.contains(it) }) return true
+        
+        // Check custom path filters from settings
+        state.customPathFilters.forEach { (typeName, filter) ->
+            if (filter.isNotEmpty() && path.contains(filter)) {
+                FileTypeIcons.typesFor(path)?.let { types ->
+                    if (typeName in types) return true
+                }
+            }
+        }
+        
+        return false
     }
 
     override fun getContextClassLoader(path: String, originalClassLoader: ClassLoader?): ClassLoader? =
@@ -73,7 +84,7 @@ object ClassicIconPatcher : IconPathPatcher() {
     }
 }
 
-/** Application component: wird früh beim Start instanziiert (wie bei IdeaIconPack). */
+/** Application component: wird fr\u00fch beim Start instanziiert (wie bei IdeaIconPack). */
 class ClassicIconsComponent {
     init {
         ClassicIconPatcher.install()
