@@ -14,11 +14,16 @@ import com.intellij.ui.dsl.builder.bindText
 import com.intellij.ui.dsl.builder.panel
 import com.intellij.ui.table.JBTable
 import java.awt.Color
+import java.awt.Component
 import java.awt.Dimension
 import java.util.regex.Pattern
 import javax.swing.BorderFactory
+import javax.swing.Icon
+import javax.swing.JLabel
+import javax.swing.JTable
 import javax.swing.RowFilter
 import javax.swing.event.DocumentEvent
+import javax.swing.table.DefaultTableCellRenderer
 import javax.swing.table.TableRowSorter
 
 class ClassicIconsConfigurable : BoundConfigurable("Classic Icons") {
@@ -26,7 +31,10 @@ class ClassicIconsConfigurable : BoundConfigurable("Classic Icons") {
 
     private val tableModel by lazy {
         FileTypeIcons.refresh()
-        FileTypeTableModel().also { it.load(settings.excludedFileTypes) }
+        FileTypeTableModel().also { 
+            it.load(settings.excludedFileTypes)
+            it.setCustomIconsDir(settings.customIconsDir)
+        }
     }
 
     override fun createPanel(): DialogPanel {
@@ -40,6 +48,28 @@ class ClassicIconsConfigurable : BoundConfigurable("Classic Icons") {
             
             // Auto-resize columns based on content
             autoResizeMode = JBTable.AUTO_RESIZE_ALL_COLUMNS
+            
+            // Set custom renderer for Icon column to grey out and show tooltip
+            setDefaultRenderer(Icon::class.java, object : DefaultTableCellRenderer() {
+                override fun getTableCellRendererComponent(
+                    table: JTable,
+                    value: Any?,
+                    isSelected: Boolean,
+                    hasFocus: Boolean,
+                    row: Int,
+                    column: Int
+                ): Component {
+                    val comp = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column)
+                    if (column == 1 && tableModel.isIconGreyedOut(row)) {
+                        comp.foreground = Color.GRAY
+                        (comp as? JLabel)?.toolTipText = tableModel.getIconTooltip(row)
+                    } else {
+                        comp.foreground = table.foreground
+                        (comp as? JLabel)?.toolTipText = null
+                    }
+                    return comp
+                }
+            })
             
             filterField.document.addDocumentListener(object : DocumentAdapter() {
                 override fun textChanged(e: DocumentEvent) {
@@ -60,7 +90,7 @@ class ClassicIconsConfigurable : BoundConfigurable("Classic Icons") {
             group("File types (mode \"files and folders\")") {
                 row("Filter:") { cell(filterField).align(AlignX.FILL) }
                 row { scrollCell(table).align(Align.FILL) }
-                row { comment("Detected from the registered file types. Untick a file type to keep its New UI icon. Filter by file type name, extension, or icon path.") }
+                row { comment("Detected from the registered file types. Untick a file type to keep its New UI icon. Icons are greyed out when overridden or classic is disabled for that file type.") }
             }
 
             collapsibleGroup("Advanced: additional path filters") {
@@ -97,11 +127,15 @@ class ClassicIconsConfigurable : BoundConfigurable("Classic Icons") {
     override fun apply() {
         super.apply()
         settings.excludedFileTypes = tableModel.excluded().toMutableList()
+        tableModel.setUseClassic(settings.scope != IconScope.DISABLED)
+        tableModel.setCustomIconsDir(settings.customIconsDir)
         ClassicIconPatcher.refreshUi()
     }
 
     override fun reset() {
         super.reset()
         tableModel.load(settings.excludedFileTypes)
+        tableModel.setCustomIconsDir(settings.customIconsDir)
+        tableModel.setUseClassic(settings.scope != IconScope.DISABLED)
     }
 }
