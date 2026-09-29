@@ -7,10 +7,17 @@ class FileTypeTableModel : AbstractTableModel() {
     class Row(val name: String, val icon: Icon, val path: String, val extension: String, var classic: Boolean)
 
     private var rows: List<Row> = emptyList()
+    private var useClassicIcons: Boolean = true
 
-    fun load(excluded: Collection<String>) {
+    fun load(excluded: Collection<String>, useClassic: Boolean = true) {
+        this.useClassicIcons = useClassic
         val ex = excluded.toSet()
         rows = FileTypeIcons.entries.map { Row(it.typeName, it.icon, it.path, it.extension, it.typeName !in ex) }
+        fireTableDataChanged()
+    }
+
+    fun setUseClassic(useClassic: Boolean) {
+        this.useClassicIcons = useClassic
         fireTableDataChanged()
     }
 
@@ -31,11 +38,18 @@ class FileTypeTableModel : AbstractTableModel() {
     override fun getValueAt(rowIndex: Int, columnIndex: Int): Any = rows[rowIndex].let {
         when (columnIndex) {
             0 -> it.classic
-            1 -> it.icon
+            1 -> getEffectiveIcon(rowIndex)
             2 -> it.name
             3 -> it.extension
             else -> it.path
         }
+    }
+
+    private fun getEffectiveIcon(rowIndex: Int): Icon {
+        val row = rows[rowIndex]
+        if (!useClassicIcons) return row.icon
+        if (!row.classic) return row.icon
+        return row.icon
     }
 
     override fun setValueAt(value: Any?, rowIndex: Int, columnIndex: Int) {
