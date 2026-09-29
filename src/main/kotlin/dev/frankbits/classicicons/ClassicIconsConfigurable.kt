@@ -46,8 +46,28 @@ class ClassicIconsConfigurable : BoundConfigurable("Classic Icons") {
             columnModel.getColumn(6).maxWidth = 150
             preferredScrollableViewportSize = Dimension(900, 220)
             
-            // Set custom renderer to grey out rows with custom icons
-            val customIconColumn = 5
+            // Set custom renderer for Boolean (checkbox) column
+            setDefaultRenderer(Boolean::class.javaObjectType, object : DefaultTableCellRenderer() {
+                override fun getTableCellRendererComponent(
+                    table: JTable,
+                    value: Any?,
+                    isSelected: Boolean,
+                    hasFocus: Boolean,
+                    row: Int,
+                    column: Int
+                ): Component {
+                    val comp = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column)
+                    if (tableModel.hasCustomIcon(row) && column == 0) {
+                        comp.foreground = Color.GRAY
+                        (comp as? JLabel)?.toolTipText = "Overridden by custom icon"
+                    } else {
+                        comp.foreground = table.foreground
+                    }
+                    return comp
+                }
+            })
+            
+            // Set custom renderer for Icon column
             setDefaultRenderer(Icon::class.java, object : DefaultTableCellRenderer() {
                 override fun getTableCellRendererComponent(
                     table: JTable,
@@ -59,17 +79,10 @@ class ClassicIconsConfigurable : BoundConfigurable("Classic Icons") {
                 ): Component {
                     val comp = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column)
                     
-                    // Grey out the base icon column if a custom icon exists for this row
+                    // Grey out the Icon column (column 1) if a custom icon exists
                     if (column == 1 && tableModel.hasCustomIcon(row)) {
                         comp.foreground = Color.GRAY
                         (comp as? JLabel)?.toolTipText = "Overridden by custom icon"
-                    } else {
-                        comp.foreground = table.foreground
-                    }
-                    
-                    // Grey out the entire row if it has a custom icon
-                    if (tableModel.hasCustomIcon(row) && column != customIconColumn) {
-                        comp.foreground = Color.GRAY
                     }
                     
                     return comp
@@ -77,7 +90,7 @@ class ClassicIconsConfigurable : BoundConfigurable("Classic Icons") {
             })
             
             // Set renderer for the Custom Icon column to show tooltips
-            columnModel.getColumn(customIconColumn).cellRenderer = object : DefaultTableCellRenderer() {
+            columnModel.getColumn(5).cellRenderer = object : DefaultTableCellRenderer() {
                 override fun getTableCellRendererComponent(
                     table: JTable,
                     value: Any?,
@@ -113,7 +126,7 @@ class ClassicIconsConfigurable : BoundConfigurable("Classic Icons") {
             group("File types (mode \"files and folders\")") {
                 row("Filter:") { cell(filterField).align(AlignX.FILL) }
                 row { scrollCell(table).align(Align.FILL) }
-                row { comment("Detected from the registered file types. Untick a file type to keep its New UI icon. Rows with custom icons are greyed out. Filter by file type name, extension, or icon path.") }
+                row { comment("Detected from the registered file types. Untick a file type to keep its New UI icon. Icon and checkbox are greyed out when overridden by custom icon. Filter by file type name, extension, or icon path.") }
             }
 
             collapsibleGroup("Advanced: additional path filters") {
