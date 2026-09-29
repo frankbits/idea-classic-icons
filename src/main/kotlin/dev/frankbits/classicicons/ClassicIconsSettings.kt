@@ -10,7 +10,7 @@ class ClassicIconsSettings : PersistentStateComponent<ClassicIconsSettings.State
     class State {
         var scope: IconScope = IconScope.ALL
 
-        /** Zusätzliche Pfad-Teile (ein Eintrag pro Zeile), die im Modus "Files and folders" als Datei-Icons zählen. */
+        /** Zus\u00e4tzliche Pfad-Teile (ein Eintrag pro Zeile), die im Modus "Files and folders" als Datei-Icons z\u00e4hlen. */
         var extraFilters: String = ""
 
         /** Ordner mit eigenen Icons; Struktur spiegelt die Original-Icon-Pfade (z. B. fileTypes/java.svg). */
@@ -18,6 +18,9 @@ class ClassicIconsSettings : PersistentStateComponent<ClassicIconsSettings.State
 
         /** Dateitypen (Name), deren Icon im Modus "Files and folders" NICHT klassisch sein soll. */
         var excludedFileTypes: MutableList<String> = mutableListOf()
+
+        /** Benutzerdefinierte Pfadfilter pro Dateityp (Name -> Filter). */
+        var customPathFilters: MutableMap<String, String> = mutableMapOf()
     }
 
     private var state = State()
