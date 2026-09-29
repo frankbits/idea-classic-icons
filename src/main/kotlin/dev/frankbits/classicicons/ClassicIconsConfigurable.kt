@@ -97,11 +97,13 @@ class ClassicIconsConfigurable : BoundConfigurable("Classic Icons") {
     override fun apply() {
         super.apply()
         settings.excludedFileTypes = tableModel.excluded().toMutableList()
+        tableModel.setUseClassic(settings.scope != IconScope.DISABLED)
         ClassicIconPatcher.refreshUi()
     }
 
     override fun reset() {
         super.reset()
         tableModel.load(settings.excludedFileTypes)
+        tableModel.setUseClassic(settings.scope != IconScope.DISABLED)
     }
 }
