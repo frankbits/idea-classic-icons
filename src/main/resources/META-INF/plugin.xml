@@ -1,0 +1,21 @@
+<idea-plugin>
+    <id>dev.frankbits.classicicons</id>
+    <name>Classic Icons (New UI)</name>
+    <vendor>frankbits</vendor>
+    <description>Uses the classic icons while the New UI stays enabled. Optionally restrict it to file and folder icons only (Settings | Appearance &amp; Behavior | Classic Icons).</description>
+    <depends>com.intellij.modules.platform</depends>
+
+    <!-- Muss früh instanziiert werden, damit der Patcher vor dem Theme-Patcher der New UI installiert ist -->
+    <application-components>
+        <component>
+            <implementation-class>dev.frankbits.classicicons.ClassicIconsComponent</implementation-class>
+        </component>
+    </application-components>
+
+    <extensions defaultExtensionNs="com.intellij">
+        <applicationConfigurable parentId="appearance"
+                                 instance="dev.frankbits.classicicons.ClassicIconsConfigurable"
+                                 id="dev.frankbits.classicicons.settings"
+                                 displayName="Classic Icons"/>
+    </extensions>
+</idea-plugin>
