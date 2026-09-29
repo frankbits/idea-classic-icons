@@ -14,12 +14,16 @@ import com.intellij.ui.dsl.builder.bindText
 import com.intellij.ui.dsl.builder.panel
 import com.intellij.ui.table.JBTable
 import java.awt.Color
+import java.awt.Component
 import java.awt.Dimension
 import java.util.regex.Pattern
 import javax.swing.BorderFactory
+import javax.swing.JLabel
+import javax.swing.JTable
 import javax.swing.RowFilter
-import javax.swing.event.DocumentEvent
+import javax.swing.table.DefaultTableCellRenderer
 import javax.swing.table.TableRowSorter
+import javax.swing.event.DocumentEvent
 
 class ClassicIconsConfigurable : BoundConfigurable("Classic Icons") {
     private val settings get() = ClassicIconsSettings.getInstance().state
@@ -38,17 +42,58 @@ class ClassicIconsConfigurable : BoundConfigurable("Classic Icons") {
             rowSorter = sorter
             columnModel.getColumn(0).maxWidth = 70
             columnModel.getColumn(1).maxWidth = 50
-<<<<<<< HEAD
-            columnModel.getColumn(3).maxWidth = 100
-            preferredScrollableViewportSize = Dimension(600, 220)
+            columnModel.getColumn(5).maxWidth = 50
+            columnModel.getColumn(6).maxWidth = 150
+            preferredScrollableViewportSize = Dimension(900, 220)
             
-            // Auto-resize columns based on content
-            autoResizeMode = JBTable.AUTO_RESIZE_ALL_COLUMNS
+            // Set custom renderer to grey out rows with custom icons
+            val customIconColumn = 5
+            setDefaultRenderer(Icon::class.java, object : DefaultTableCellRenderer() {
+                override fun getTableCellRendererComponent(
+                    table: JTable,
+                    value: Any?,
+                    isSelected: Boolean,
+                    hasFocus: Boolean,
+                    row: Int,
+                    column: Int
+                ): Component {
+                    val comp = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column)
+                    
+                    // Grey out the base icon column if a custom icon exists for this row
+                    if (column == 1 && tableModel.hasCustomIcon(row)) {
+                        comp.foreground = Color.GRAY
+                        (comp as? JLabel)?.toolTipText = "Overridden by custom icon"
+                    } else {
+                        comp.foreground = table.foreground
+                    }
+                    
+                    // Grey out the entire row if it has a custom icon
+                    if (tableModel.hasCustomIcon(row) && column != customIconColumn) {
+                        comp.foreground = Color.GRAY
+                    }
+                    
+                    return comp
+                }
+            })
             
-=======
-            columnModel.getColumn(5).maxWidth = 150
-            preferredScrollableViewportSize = Dimension(800, 220)
->>>>>>> c3fac44 (Implement live custom icon preview from icon pack)
+            // Set renderer for the Custom Icon column to show tooltips
+            columnModel.getColumn(customIconColumn).cellRenderer = object : DefaultTableCellRenderer() {
+                override fun getTableCellRendererComponent(
+                    table: JTable,
+                    value: Any?,
+                    isSelected: Boolean,
+                    hasFocus: Boolean,
+                    row: Int,
+                    column: Int
+                ): Component {
+                    val comp = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column)
+                    if (value != null) {
+                        (comp as? JLabel)?.toolTipText = "Custom icon from pack"
+                    }
+                    return comp
+                }
+            }
+            
             filterField.document.addDocumentListener(object : DocumentAdapter() {
                 override fun textChanged(e: DocumentEvent) {
                     val text = filterField.text.trim()
@@ -68,7 +113,7 @@ class ClassicIconsConfigurable : BoundConfigurable("Classic Icons") {
             group("File types (mode \"files and folders\")") {
                 row("Filter:") { cell(filterField).align(AlignX.FILL) }
                 row { scrollCell(table).align(Align.FILL) }
-                row { comment("Detected from the registered file types. Untick a file type to keep its New UI icon. Filter by file type name, extension, or icon path.") }
+                row { comment("Detected from the registered file types. Untick a file type to keep its New UI icon. Rows with custom icons are greyed out. Filter by file type name, extension, or icon path.") }
             }
 
             collapsibleGroup("Advanced: additional path filters") {
@@ -90,7 +135,7 @@ class ClassicIconsConfigurable : BoundConfigurable("Classic Icons") {
                     comment(
                         "Mirror the icon paths from the table above, e.g. <code>fileTypes/java.svg</code> or " +
                             "<code>icons/MarkdownPlugin.svg</code>. Files in this folder win over everything else. " +
-                            "SVG or PNG."
+                            "SVG or PNG. Custom icons appear in the 'Custom Icon' column."
                     )
                 }
             }
