@@ -15,7 +15,7 @@ class FileTypeTableModel : AbstractTableModel() {
         fireTableDataChanged()
     }
 
-    private fun hasCustomIcon(rowIndex: Int): Boolean {
+    fun hasCustomIcon(rowIndex: Int): Boolean {
         val row = rows.getOrNull(rowIndex) ?: return false
         if (customIconsDir.isBlank()) return false
 

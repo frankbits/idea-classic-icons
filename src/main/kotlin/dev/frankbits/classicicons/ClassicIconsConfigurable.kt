@@ -8,10 +8,14 @@ import com.intellij.ui.DocumentAdapter
 import com.intellij.ui.components.JBTextField
 import com.intellij.ui.dsl.builder.*
 import com.intellij.ui.table.JBTable
+import java.awt.Component
 import java.awt.Dimension
 import java.util.regex.Pattern
+import javax.swing.Icon
+import javax.swing.JLabel
 import javax.swing.RowFilter
 import javax.swing.event.DocumentEvent
+import javax.swing.table.DefaultTableCellRenderer
 import javax.swing.table.TableRowSorter
 
 class TooltipTable(model: FileTypeTableModel) : JBTable(model) {
@@ -57,6 +61,38 @@ class ClassicIconsConfigurable : BoundConfigurable("Classic Icons") {
                         if (text.isEmpty()) null else RowFilter.regexFilter("(?i)" + Pattern.quote(text), 2, 3, 4)
                 }
             })
+
+            // Visual Indicator for icons overridden by custom icon pack
+            columnModel.getColumn(1).cellRenderer = object : DefaultTableCellRenderer() {
+                override fun getTableCellRendererComponent(
+                    table: javax.swing.JTable,
+                    value: Any?,
+                    isSelected: Boolean,
+                    hasFocus: Boolean,
+                    row: Int,
+                    column: Int
+                ): Component {
+                    val comp = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column) as JLabel
+                    comp.border = null
+                    comp.horizontalAlignment = CENTER
+                    if (value is Icon) {
+                        comp.icon = value
+                        comp.text = ""
+                    }
+
+                    val modelRow = table.convertRowIndexToModel(row)
+                    if (tableModel.hasCustomIcon(modelRow)) {
+                        // Add a small colored border on top and right edges
+                        comp.border = javax.swing.border.CompoundBorder(
+                            javax.swing.border.MatteBorder(0, 1, 0, 0, java.awt.Color.ORANGE),
+                            javax.swing.border.EmptyBorder(0, 0, 0, 0)
+                        )
+                    } else {
+                        comp.border = null
+                    }
+                    return comp
+                }
+            }
         }
 
         return panel {
@@ -107,6 +143,7 @@ class ClassicIconsConfigurable : BoundConfigurable("Classic Icons") {
     override fun apply() {
         super.apply()
         settings.excludedFileTypes = tableModel.excluded().toMutableList()
+        tableModel.setCustomIconsDir(settings.customIconsDir)
         ClassicIconPatcher.refreshUi()
     }
 
