@@ -14,11 +14,15 @@ import com.intellij.ui.dsl.builder.bindText
 import com.intellij.ui.dsl.builder.panel
 import com.intellij.ui.table.JBTable
 import java.awt.Color
+import java.awt.Component
 import java.awt.Dimension
 import java.util.regex.Pattern
 import javax.swing.BorderFactory
+import javax.swing.Icon
+import javax.swing.JLabel
 import javax.swing.RowFilter
 import javax.swing.event.DocumentEvent
+import javax.swing.table.DefaultTableCellRenderer
 import javax.swing.table.TableRowSorter
 
 class ClassicIconsConfigurable : BoundConfigurable("Classic Icons") {
@@ -26,7 +30,10 @@ class ClassicIconsConfigurable : BoundConfigurable("Classic Icons") {
 
     private val tableModel by lazy {
         FileTypeIcons.refresh()
-        FileTypeTableModel().also { it.load(settings.excludedFileTypes) }
+        FileTypeTableModel().also {
+            it.load(settings.excludedFileTypes)
+            it.setCustomIconsDir(settings.customIconsDir)
+        }
     }
 
     override fun createPanel(): DialogPanel {
@@ -35,10 +42,10 @@ class ClassicIconsConfigurable : BoundConfigurable("Classic Icons") {
             rowSorter = sorter
             columnModel.getColumn(0).maxWidth = 70
             columnModel.getColumn(1).maxWidth = 50
+            columnModel.getColumn(2).minWidth = 150
             columnModel.getColumn(3).maxWidth = 100
             preferredScrollableViewportSize = Dimension(600, 220)
             
-            // Auto-resize columns based on content
             autoResizeMode = JBTable.AUTO_RESIZE_ALL_COLUMNS
             
             filterField.document.addDocumentListener(object : DocumentAdapter() {
@@ -48,6 +55,35 @@ class ClassicIconsConfigurable : BoundConfigurable("Classic Icons") {
                         if (text.isEmpty()) null else RowFilter.regexFilter("(?i)" + Pattern.quote(text), 2, 3, 4)
                 }
             })
+
+            columnModel.getColumn(1).cellRenderer = object : DefaultTableCellRenderer() {
+                override fun getTableCellRendererComponent(
+                    table: javax.swing.JTable,
+                    value: Any?,
+                    isSelected: Boolean,
+                    hasFocus: Boolean,
+                    row: Int,
+                    column: Int
+                ): Component {
+                    val comp = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column) as JLabel
+                    comp.border = null
+                    comp.horizontalAlignment = JLabel.CENTER
+                    if (value is Icon) {
+                        comp.icon = value
+                        comp.text = ""
+                    }
+                    val modelRow = table.convertRowIndexToModel(row)
+                    if (tableModel.hasCustomIcon(modelRow)) {
+                        comp.border = javax.swing.border.CompoundBorder(
+                            javax.swing.border.MatteBorder(0, 1, 0, 0, java.awt.Color.ORANGE),
+                            javax.swing.border.EmptyBorder(0, 0, 0, 0)
+                        )
+                    } else {
+                        comp.border = null
+                    }
+                    return comp
+                }
+            }
         }
 
         return panel {
@@ -60,7 +96,9 @@ class ClassicIconsConfigurable : BoundConfigurable("Classic Icons") {
             group("File types (mode \"files and folders\")") {
                 row("Filter:") { cell(filterField).align(AlignX.FILL) }
                 row { scrollCell(table).align(Align.FILL) }
-                row { comment("Detected from the registered file types. Untick a file type to keep its New UI icon. Filter by file type name, extension, or icon path.") }
+                row { comment("Detected from the registered file types. File types sharing the same icon are grouped. Untick a group to keep its New UI icon. Filter by file type name, extension, or icon path.") }
+            }.apply {
+                isVisible = settings.scope == IconScope.FILES_AND_FOLDERS
             }
 
             collapsibleGroup("Advanced: additional path filters") {
@@ -70,6 +108,8 @@ class ClassicIconsConfigurable : BoundConfigurable("Classic Icons") {
                         .bindText(settings::extraFilters)
                 }
                 row { comment("One path fragment per line, e.g. MarkdownPlugin. Only used in \"files and folders\" mode.") }
+            }.apply {
+                isVisible = settings.scope == IconScope.FILES_AND_FOLDERS
             }
 
             group("Custom icon pack") {
@@ -97,11 +137,13 @@ class ClassicIconsConfigurable : BoundConfigurable("Classic Icons") {
     override fun apply() {
         super.apply()
         settings.excludedFileTypes = tableModel.excluded().toMutableList()
+        tableModel.setCustomIconsDir(settings.customIconsDir)
         ClassicIconPatcher.refreshUi()
     }
 
     override fun reset() {
         super.reset()
         tableModel.load(settings.excludedFileTypes)
+        tableModel.setCustomIconsDir(settings.customIconsDir)
     }
 }

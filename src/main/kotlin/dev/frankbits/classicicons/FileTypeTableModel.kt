@@ -1,24 +1,66 @@
 package dev.frankbits.classicicons
 
+import java.io.File
 import javax.swing.Icon
 import javax.swing.table.AbstractTableModel
 
 class FileTypeTableModel : AbstractTableModel() {
-    class Row(val name: String, val icon: Icon, val path: String, val extension: String, var classic: Boolean)
+    class Row(val path: String, val icon: Icon, val fileTypes: String, val extensions: String, var classic: Boolean)
 
     private var rows: List<Row> = emptyList()
+    private var customIconsDir: String = ""
 
     fun load(excluded: Collection<String>) {
         val ex = excluded.toSet()
-        rows = FileTypeIcons.entries.map { Row(it.typeName, it.icon, it.path, it.extension, it.typeName !in ex) }
+
+        // Group entries by icon path
+        val grouped = FileTypeIcons.entries.groupBy { it.path }.map { (path, entries) ->
+            val allExcluded = entries.all { it.typeName in ex }
+            val fileTypeNames = entries.joinToString(", ") { it.typeName }
+            val extList = entries.map { it.extension }.filter { it.isNotEmpty() }.distinct().joinToString(", ")
+            Row(path, entries.first().icon, fileTypeNames, extList, !allExcluded)
+        }.sortedBy { it.fileTypes.lowercase() }
+
+        rows = grouped
         fireTableDataChanged()
     }
 
-    fun excluded(): Set<String> = rows.filter { !it.classic }.map { it.name }.toSet()
+    fun setCustomIconsDir(dir: String) {
+        this.customIconsDir = dir
+        fireTableDataChanged()
+    }
+
+    fun hasCustomIcon(rowIndex: Int): Boolean {
+        val row = rows.getOrNull(rowIndex) ?: return false
+        if (customIconsDir.isBlank()) return false
+
+        val rel = row.path.removePrefix("/")
+        val exact = File(customIconsDir, rel)
+        if (exact.isFile) return true
+
+        val base = rel.substringBeforeLast('.', rel)
+        for (ext in listOf("svg", "png")) {
+            val f = File(customIconsDir, "$base.$ext")
+            if (f.isFile) return true
+        }
+        return false
+    }
+
+    fun getIconTooltip(rowIndex: Int): String? {
+        if (hasCustomIcon(rowIndex)) return "Overridden by custom icon"
+        return null
+    }
+
+    fun excluded(): Set<String> {
+        // Expand grouped rows back to individual file type names
+        return rows.filter { !it.classic }.flatMap { row ->
+            FileTypeIcons.entries.filter { it.path == row.path }.map { it.typeName }
+        }.toSet()
+    }
 
     override fun getRowCount() = rows.size
     override fun getColumnCount() = 5
-    override fun getColumnName(column: Int) = arrayOf("Classic", "Icon", "File type", "Extension", "Icon path")[column]
+    override fun getColumnName(column: Int) = arrayOf("Classic", "Icon", "File types", "Extensions", "Icon path")[column]
 
     override fun getColumnClass(columnIndex: Int): Class<*> = when (columnIndex) {
         0 -> Boolean::class.javaObjectType
@@ -32,8 +74,8 @@ class FileTypeTableModel : AbstractTableModel() {
         when (columnIndex) {
             0 -> it.classic
             1 -> it.icon
-            2 -> it.name
-            3 -> it.extension
+            2 -> it.fileTypes
+            3 -> it.extensions
             else -> it.path
         }
     }
