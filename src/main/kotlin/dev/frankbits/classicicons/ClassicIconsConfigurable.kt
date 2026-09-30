@@ -5,18 +5,16 @@ import com.intellij.openapi.options.BoundConfigurable
 import com.intellij.openapi.ui.DialogPanel
 import com.intellij.openapi.ui.TextFieldWithBrowseButton
 import com.intellij.ui.DocumentAdapter
-import com.intellij.ui.components.JBTextArea
 import com.intellij.ui.components.JBTextField
 import com.intellij.ui.dsl.builder.Align
 import com.intellij.ui.dsl.builder.AlignX
 import com.intellij.ui.dsl.builder.bind
 import com.intellij.ui.dsl.builder.bindText
 import com.intellij.ui.dsl.builder.panel
+import com.intellij.ui.dsl.builder.rows
 import com.intellij.ui.table.JBTable
-import java.awt.Color
 import java.awt.Dimension
 import java.util.regex.Pattern
-import javax.swing.BorderFactory
 import javax.swing.RowFilter
 import javax.swing.event.DocumentEvent
 import javax.swing.table.TableRowSorter
@@ -37,10 +35,10 @@ class ClassicIconsConfigurable : BoundConfigurable("Classic Icons") {
             columnModel.getColumn(1).maxWidth = 50
             columnModel.getColumn(3).maxWidth = 100
             preferredScrollableViewportSize = Dimension(600, 220)
-            
+
             // Auto-resize columns based on content
             autoResizeMode = JBTable.AUTO_RESIZE_ALL_COLUMNS
-            
+
             filterField.document.addDocumentListener(object : DocumentAdapter() {
                 override fun textChanged(e: DocumentEvent) {
                     val text = filterField.text.trim()
@@ -65,11 +63,12 @@ class ClassicIconsConfigurable : BoundConfigurable("Classic Icons") {
 
             collapsibleGroup("Advanced: additional path filters") {
                 row {
-                    cell(JBTextArea(4, 40).apply { border = BorderFactory.createLineBorder(Color.GRAY) })
+                    textArea()
+                        .rows(4)
                         .align(AlignX.FILL)
                         .bindText(settings::extraFilters)
+                        .comment("One path fragment per line (e.g. MarkdownPlugin). Only used in \"Only files and folders\" mode.")
                 }
-                row { comment("One path fragment per line, e.g. MarkdownPlugin. Only used in \"files and folders\" mode.") }
             }
 
             group("Custom icon pack") {
