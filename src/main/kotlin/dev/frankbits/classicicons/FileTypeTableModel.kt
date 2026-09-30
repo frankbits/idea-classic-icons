@@ -5,10 +5,25 @@ import javax.swing.Icon
 import javax.swing.table.AbstractTableModel
 
 class FileTypeTableModel : AbstractTableModel() {
-    class Row(val name: String, val icon: Icon, val path: String, val extension: String, var classic: Boolean)
+    class Row(val path: String, val icon: Icon, val fileTypes: String, val extensions: String, var classic: Boolean)
 
     private var rows: List<Row> = emptyList()
     private var customIconsDir: String = ""
+
+    fun load(excluded: Collection<String>) {
+        val ex = excluded.toSet()
+
+        // Group entries by icon path
+        val grouped = FileTypeIcons.entries.groupBy { it.path }.map { (path, entries) ->
+            val allExcluded = entries.all { it.typeName in ex }
+            val fileTypeNames = entries.joinToString(", ") { it.typeName }
+            val extList = entries.map { it.extension }.filter { it.isNotEmpty() }.distinct().joinToString(", ")
+            Row(path, entries.first().icon, fileTypeNames, extList, !allExcluded)
+        }.sortedBy { it.fileTypes.lowercase() }
+
+        rows = grouped
+        fireTableDataChanged()
+    }
 
     fun setCustomIconsDir(dir: String) {
         this.customIconsDir = dir
@@ -36,17 +51,17 @@ class FileTypeTableModel : AbstractTableModel() {
         return null
     }
 
-    fun load(excluded: Collection<String>) {
-        val ex = excluded.toSet()
-        rows = FileTypeIcons.entries.map { Row(it.typeName, it.icon, it.path, it.extension, it.typeName !in ex) }
-        fireTableDataChanged()
+    fun excluded(): Set<String> {
+        // Expand grouped rows back to individual file type names
+        return rows.filter { !it.classic }.flatMap { row ->
+            FileTypeIcons.entries.filter { it.path == row.path }.map { it.typeName }
+        }.toSet()
     }
-
-    fun excluded(): Set<String> = rows.filter { !it.classic }.map { it.name }.toSet()
 
     override fun getRowCount() = rows.size
     override fun getColumnCount() = 5
-    override fun getColumnName(column: Int) = arrayOf("Classic", "Icon", "File type", "Extension", "Icon path")[column]
+    override fun getColumnName(column: Int) =
+        arrayOf("Classic", "Icon", "File types", "Extensions", "Icon path")[column]
 
     override fun getColumnClass(columnIndex: Int): Class<*> = when (columnIndex) {
         0 -> Boolean::class.javaObjectType
@@ -60,8 +75,8 @@ class FileTypeTableModel : AbstractTableModel() {
         when (columnIndex) {
             0 -> it.classic
             1 -> it.icon
-            2 -> it.name
-            3 -> it.extension
+            2 -> it.fileTypes
+            3 -> it.extensions
             else -> it.path
         }
     }

@@ -48,6 +48,7 @@ class ClassicIconsConfigurable : BoundConfigurable("Classic Icons") {
             rowSorter = sorter
             columnModel.getColumn(0).maxWidth = 70
             columnModel.getColumn(1).maxWidth = 50
+            columnModel.getColumn(2).minWidth = 150
             columnModel.getColumn(3).maxWidth = 100
             preferredScrollableViewportSize = Dimension(600, 220)
 
@@ -105,7 +106,7 @@ class ClassicIconsConfigurable : BoundConfigurable("Classic Icons") {
             group("File types (mode \"files and folders\")") {
                 row("Filter:") { cell(filterField).align(AlignX.FILL) }
                 row { scrollCell(table).align(Align.FILL) }
-                row { comment("Detected from the registered file types. Untick a file type to keep its New UI icon. Filter by file type name, extension, or icon path.") }
+                row { comment("Detected from the registered file types. File types sharing the same icon are grouped. Untick a group to keep its New UI icon. Filter by file type name, extension, or icon path.") }
             }
 
             collapsibleGroup("Advanced: additional path filters") {
