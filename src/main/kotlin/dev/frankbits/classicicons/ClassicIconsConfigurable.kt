@@ -14,16 +14,32 @@ import javax.swing.RowFilter
 import javax.swing.event.DocumentEvent
 import javax.swing.table.TableRowSorter
 
+class TooltipTable(model: FileTypeTableModel) : JBTable(model) {
+    override fun getToolTipText(event: java.awt.event.MouseEvent?): String? {
+        if (event == null) return null
+        val viewRow = rowAtPoint(event.point)
+        val viewCol = columnAtPoint(event.point)
+        if (viewRow >= 0 && viewCol == 1) {
+            val modelRow = convertRowIndexToModel(viewRow)
+            return (model as FileTypeTableModel).getIconTooltip(modelRow)
+        }
+        return null
+    }
+}
+
 class ClassicIconsConfigurable : BoundConfigurable("Classic Icons") {
     private val settings get() = ClassicIconsSettings.getInstance().state
 
     private val tableModel by lazy {
         FileTypeIcons.refresh()
-        FileTypeTableModel().also { it.load(settings.excludedFileTypes) }
+        FileTypeTableModel().also {
+            it.load(settings.excludedFileTypes)
+            it.setCustomIconsDir(settings.customIconsDir)
+        }
     }
 
     override fun createPanel(): DialogPanel {
-        val table = JBTable(tableModel).apply {
+        val table = TooltipTable(tableModel).apply {
             val sorter = TableRowSorter(tableModel)
             rowSorter = sorter
             columnModel.getColumn(0).maxWidth = 70
@@ -97,5 +113,6 @@ class ClassicIconsConfigurable : BoundConfigurable("Classic Icons") {
     override fun reset() {
         super.reset()
         tableModel.load(settings.excludedFileTypes)
+        tableModel.setCustomIconsDir(settings.customIconsDir)
     }
 }

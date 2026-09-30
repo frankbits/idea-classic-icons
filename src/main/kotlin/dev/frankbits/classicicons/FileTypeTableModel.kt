@@ -1,5 +1,6 @@
 package dev.frankbits.classicicons
 
+import java.io.File
 import javax.swing.Icon
 import javax.swing.table.AbstractTableModel
 
@@ -7,6 +8,33 @@ class FileTypeTableModel : AbstractTableModel() {
     class Row(val name: String, val icon: Icon, val path: String, val extension: String, var classic: Boolean)
 
     private var rows: List<Row> = emptyList()
+    private var customIconsDir: String = ""
+
+    fun setCustomIconsDir(dir: String) {
+        this.customIconsDir = dir
+        fireTableDataChanged()
+    }
+
+    private fun hasCustomIcon(rowIndex: Int): Boolean {
+        val row = rows.getOrNull(rowIndex) ?: return false
+        if (customIconsDir.isBlank()) return false
+
+        val rel = row.path.removePrefix("/")
+        val exact = File(customIconsDir, rel)
+        if (exact.isFile) return true
+
+        val base = rel.substringBeforeLast('.', rel)
+        for (ext in listOf("svg", "png")) {
+            val f = File(customIconsDir, "$base.$ext")
+            if (f.isFile) return true
+        }
+        return false
+    }
+
+    fun getIconTooltip(rowIndex: Int): String? {
+        if (hasCustomIcon(rowIndex)) return "Overridden by custom icon"
+        return null
+    }
 
     fun load(excluded: Collection<String>) {
         val ex = excluded.toSet()
