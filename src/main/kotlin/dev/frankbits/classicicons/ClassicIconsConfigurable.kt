@@ -107,7 +107,7 @@ class ClassicIconsConfigurable : BoundConfigurable("Classic Icons") {
                 row("Filter:") { cell(filterField).align(AlignX.FILL) }
                 row { scrollCell(table).align(Align.FILL) }
                 row { comment("Detected from the registered file types. File types sharing the same icon are grouped. Untick a group to keep its New UI icon. Filter by file type name, extension, or icon path.") }
-            }
+            }.visibleIf(settings::scope) { it == IconScope.FILES_AND_FOLDERS }
 
             collapsibleGroup("Advanced: additional path filters") {
                 row {
@@ -117,7 +117,7 @@ class ClassicIconsConfigurable : BoundConfigurable("Classic Icons") {
                         .bindText(settings::extraFilters)
                         .comment("One path fragment per line (e.g. MarkdownPlugin). Only used in \"Only files and folders\" mode.")
                 }
-            }
+            }.visibleIf(settings::scope) { it == IconScope.FILES_AND_FOLDERS }
 
             group("Custom icon pack") {
                 row("Folder:") {
