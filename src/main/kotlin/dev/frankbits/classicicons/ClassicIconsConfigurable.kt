@@ -7,95 +7,76 @@ import com.intellij.openapi.ui.TextFieldWithBrowseButton
 import com.intellij.ui.DocumentAdapter
 import com.intellij.ui.components.JBTextField
 import com.intellij.ui.dsl.builder.*
-import com.intellij.ui.table.JBTable
-import java.awt.Component
+import com.intellij.ui.tree.JBTree
 import java.awt.Dimension
-import java.util.regex.Pattern
-import javax.swing.Icon
-import javax.swing.JLabel
-import javax.swing.RowFilter
+import java.awt.event.MouseAdapter
+import java.awt.event.MouseEvent
 import javax.swing.event.DocumentEvent
-import javax.swing.table.DefaultTableCellRenderer
-import javax.swing.table.TableRowSorter
+import javax.swing.tree.DefaultMutableTreeNode
+import javax.swing.tree.TreePath
+import javax.swing.tree.TreeSelectionModel
 
-class TooltipTable(model: FileTypeTableModel) : JBTable(model) {
-    override fun getToolTipText(event: java.awt.event.MouseEvent?): String? {
-        if (event == null) return null
-        val viewRow = rowAtPoint(event.point)
-        val viewCol = columnAtPoint(event.point)
-        if (viewRow >= 0 && viewCol == 1) {
-            val modelRow = convertRowIndexToModel(viewRow)
-            return (model as FileTypeTableModel).getIconTooltip(modelRow)
+class CheckboxTree(private val treeModel: FileTypeTreeModel) : JBTree(treeModel) {
+    init {
+        cellRenderer = FileTypeTreeCellRenderer(treeModel)
+        selectionModel.selectionMode = TreeSelectionModel.SINGLE_TREE_SELECTION
+        isRootVisible = false
+        showsRootHandles = true
+        
+        // Handle checkbox clicks
+        addMouseListener(object : MouseAdapter() {
+            override fun mouseClicked(e: MouseEvent) {
+                val path = getPathForLocation(e.x, e.y) ?: return
+                val node = path.lastPathComponent as? DefaultMutableTreeNode ?: return
+                
+                // Check if click was on the checkbox area (rough estimate)
+                val bounds = getPathBounds(path) ?: return
+                val checkboxWidth = 20 // Approximate checkbox width
+                
+                if (e.x - bounds.x <= checkboxWidth) {
+                    toggleNodeSelection(path, node)
+                }
+            }
+        })
+    }
+    
+    private fun toggleNodeSelection(path: TreePath, node: DefaultMutableTreeNode) {
+        when (val userObject = node.userObject) {
+            is FileTypeTreeModel.IconPathNode -> {
+                userObject.classic = !userObject.classic
+                treeModel.setAllClassic(userObject, userObject.classic)
+            }
+            is FileTypeTreeModel.FileTypeNode -> {
+                userObject.classic = !userObject.classic
+                // Update parent node state based on children
+                val parent = node.parent as? FileTypeTreeModel.IconPathNode ?: return
+                treeModel.updateFromChildren(parent)
+            }
         }
-        return null
+        repaint()
     }
 }
 
 class ClassicIconsConfigurable : BoundConfigurable("Classic Icons") {
     private val settings get() = ClassicIconsSettings.getInstance().state
 
-    private val tableModel by lazy {
+    private val treeModel by lazy {
         FileTypeIcons.refresh()
-        FileTypeTableModel().also {
+        FileTypeTreeModel().also {
             it.load(settings.excludedFileTypes)
             it.setCustomIconsDir(settings.customIconsDir)
         }
     }
 
-    override fun createPanel(): DialogPanel {
-        val table = TooltipTable(tableModel).apply {
-            val sorter = TableRowSorter(tableModel)
-            rowSorter = sorter
-            columnModel.getColumn(0).maxWidth = 70
-            columnModel.getColumn(1).maxWidth = 50
-            columnModel.getColumn(2).minWidth = 150
-            columnModel.getColumn(3).maxWidth = 100
-            preferredScrollableViewportSize = Dimension(600, 220)
-
-            // Auto-resize columns based on content
-            autoResizeMode = JBTable.AUTO_RESIZE_ALL_COLUMNS
-
-            filterField.document.addDocumentListener(object : DocumentAdapter() {
-                override fun textChanged(e: DocumentEvent) {
-                    val text = filterField.text.trim()
-                    sorter.rowFilter =
-                        if (text.isEmpty()) null else RowFilter.regexFilter("(?i)" + Pattern.quote(text), 2, 3, 4)
-                }
-            })
-
-            // Visual Indicator for icons overridden by custom icon pack
-            columnModel.getColumn(1).cellRenderer = object : DefaultTableCellRenderer() {
-                override fun getTableCellRendererComponent(
-                    table: javax.swing.JTable,
-                    value: Any?,
-                    isSelected: Boolean,
-                    hasFocus: Boolean,
-                    row: Int,
-                    column: Int
-                ): Component {
-                    val comp = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column) as JLabel
-                    comp.border = null
-                    comp.horizontalAlignment = CENTER
-                    if (value is Icon) {
-                        comp.icon = value
-                        comp.text = ""
-                    }
-
-                    val modelRow = table.convertRowIndexToModel(row)
-                    if (tableModel.hasCustomIcon(modelRow)) {
-                        // Add a small colored border on top and right edges
-                        comp.border = javax.swing.border.CompoundBorder(
-                            javax.swing.border.MatteBorder(0, 1, 0, 0, java.awt.Color.ORANGE),
-                            javax.swing.border.EmptyBorder(0, 0, 0, 0)
-                        )
-                    } else {
-                        comp.border = null
-                    }
-                    return comp
-                }
-            }
+    private val tree by lazy {
+        CheckboxTree(treeModel).apply {
+            preferredScrollableViewportSize = Dimension(600, 300)
         }
+    }
 
+    private val filterField = JBTextField()
+
+    override fun createPanel(): DialogPanel {
         return panel {
             buttonsGroup("Icons:") {
                 row { radioButton("Don't use classic icons (New UI)", IconScope.DISABLED) }
@@ -104,9 +85,18 @@ class ClassicIconsConfigurable : BoundConfigurable("Classic Icons") {
             }.bind(settings::scope)
 
             group("File types (mode \"files and folders\")") {
-                row("Filter:") { cell(filterField).align(AlignX.FILL) }
-                row { scrollCell(table).align(Align.FILL) }
-                row { comment("Detected from the registered file types. File types sharing the same icon are grouped. Untick a group to keep its New UI icon. Filter by file type name, extension, or icon path.") }
+                row("Filter:") { 
+                    cell(filterField).align(AlignX.FILL)
+                    
+                    // Add filter listener
+                    filterField.document.addDocumentListener(object : DocumentAdapter() {
+                        override fun textChanged(e: DocumentEvent) {
+                            treeModel.applyFilter(filterField.text.trim())
+                        }
+                    })
+                }
+                row { scrollCell(tree).align(Align.FILL) }
+                row { comment("Detected from the registered file types. Icons are grouped by path. Untick a group to keep its New UI icon. Filter by file type name, extension, or icon path.") }
             }
 
             collapsibleGroup("Advanced: additional path filters") {
@@ -127,7 +117,7 @@ class ClassicIconsConfigurable : BoundConfigurable("Classic Icons") {
                 }
                 row {
                     comment(
-                        "Mirror the icon paths from the table above, e.g. <code>fileTypes/java.svg</code> or " +
+                        "Mirror the icon paths from the tree above, e.g. <code>fileTypes/java.svg</code> or " +
                             "<code>icons/MarkdownPlugin.svg</code>. Files in this folder win over everything else. " +
                             "SVG or PNG."
                     )
@@ -136,21 +126,18 @@ class ClassicIconsConfigurable : BoundConfigurable("Classic Icons") {
         }
     }
 
-    private val filterField = JBTextField()
-
-    override fun isModified(): Boolean =
-        super.isModified() || tableModel.excluded() != settings.excludedFileTypes.toSet()
+    override fun isModified(): Boolean =\n        super.isModified() || treeModel.excluded() != settings.excludedFileTypes.toSet()
 
     override fun apply() {
         super.apply()
-        settings.excludedFileTypes = tableModel.excluded().toMutableList()
-        tableModel.setCustomIconsDir(settings.customIconsDir)
+        settings.excludedFileTypes = treeModel.excluded().toMutableList()
+        treeModel.setCustomIconsDir(settings.customIconsDir)
         ClassicIconPatcher.refreshUi()
     }
 
     override fun reset() {
         super.reset()
-        tableModel.load(settings.excludedFileTypes)
-        tableModel.setCustomIconsDir(settings.customIconsDir)
+        treeModel.load(settings.excludedFileTypes)
+        treeModel.setCustomIconsDir(settings.customIconsDir)
     }
 }
