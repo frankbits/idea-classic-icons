@@ -22,6 +22,15 @@ object ClassicIconPatcher : IconPathPatcher() {
         if (path.contains("expui/")) return null
         val state = ClassicIconsSettings.getInstance().state
 
+        // Prüfe zuerst Icon-Mappings
+        val mappedPath = state.iconMappings[path]
+        if (mappedPath != null) {
+            customIcon(mappedPath, state.customIconsDir)?.let { return it }
+            if (classLoader != null && classLoader.getResource(mappedPath.removePrefix("/")) != null) {
+                return mappedPath
+            }
+        }
+
         customIcon(path, state.customIconsDir)?.let { return it }
 
         if (classLoader == null) return null

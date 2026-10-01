@@ -5,12 +5,12 @@ import javax.swing.Icon
 import javax.swing.table.AbstractTableModel
 
 class FileTypeTableModel : AbstractTableModel() {
-    class Row(val path: String, val icon: Icon, val fileTypes: String, val extensions: String, var classic: Boolean)
+    class Row(val path: String, val icon: Icon, val fileTypes: String, val extensions: String, var classic: Boolean, var mapping: String)
 
     private var rows: List<Row> = emptyList()
     private var customIconsDir: String = ""
 
-    fun load(excluded: Collection<String>) {
+    fun load(excluded: Collection<String>, mappings: Map<String, String>) {
         val ex = excluded.toSet()
 
         // Group entries by icon path
@@ -18,7 +18,8 @@ class FileTypeTableModel : AbstractTableModel() {
             val allExcluded = entries.all { it.typeName in ex }
             val fileTypeNames = entries.joinToString(", ") { it.typeName }
             val extList = entries.map { it.extension }.filter { it.isNotEmpty() }.distinct().joinToString(", ")
-            Row(path, entries.first().icon, fileTypeNames, extList, !allExcluded)
+            val mappingTarget = mappings[path] ?: ""
+            Row(path, entries.first().icon, fileTypeNames, extList, !allExcluded, mappingTarget)
         }.sortedBy { it.fileTypes.lowercase() }
 
         rows = grouped
@@ -58,10 +59,15 @@ class FileTypeTableModel : AbstractTableModel() {
         }.toSet()
     }
 
+    fun mappings(): Map<String, String> {
+        return rows.filter { it.mapping.isNotEmpty() }
+            .associate { it.path to it.mapping }
+    }
+
     override fun getRowCount() = rows.size
-    override fun getColumnCount() = 5
+    override fun getColumnCount() = 6
     override fun getColumnName(column: Int) =
-        arrayOf("Classic", "Icon", "File types", "Extensions", "Icon path")[column]
+        arrayOf("Classic", "Icon", "File types", "Extensions", "Icon path", "Mapping")[column]
 
     override fun getColumnClass(columnIndex: Int): Class<*> = when (columnIndex) {
         0 -> Boolean::class.javaObjectType
@@ -69,7 +75,7 @@ class FileTypeTableModel : AbstractTableModel() {
         else -> String::class.java
     }
 
-    override fun isCellEditable(rowIndex: Int, columnIndex: Int) = columnIndex == 0
+    override fun isCellEditable(rowIndex: Int, columnIndex: Int) = columnIndex == 0 || columnIndex == 5
 
     override fun getValueAt(rowIndex: Int, columnIndex: Int): Any = rows[rowIndex].let {
         when (columnIndex) {
@@ -77,13 +83,17 @@ class FileTypeTableModel : AbstractTableModel() {
             1 -> it.icon
             2 -> it.fileTypes
             3 -> it.extensions
-            else -> it.path
+            4 -> it.path
+            else -> it.mapping
         }
     }
 
     override fun setValueAt(value: Any?, rowIndex: Int, columnIndex: Int) {
-        if (columnIndex == 0) {
-            rows[rowIndex].classic = value as? Boolean ?: return
+        if (rowIndex >= 0 && rowIndex < rows.size) {
+            when (columnIndex) {
+                0 -> rows[rowIndex].classic = value as? Boolean ?: return
+                5 -> rows[rowIndex].mapping = value as? String ?: ""
+            }
             fireTableCellUpdated(rowIndex, columnIndex)
         }
     }

@@ -17,6 +17,7 @@ import javax.swing.RowFilter
 import javax.swing.event.DocumentEvent
 import javax.swing.table.DefaultTableCellRenderer
 import javax.swing.table.TableRowSorter
+import javax.swing.JScrollPane
 
 class TooltipTable(model: FileTypeTableModel) : JBTable(model) {
     override fun getToolTipText(event: java.awt.event.MouseEvent?): String? {
@@ -37,7 +38,7 @@ class ClassicIconsConfigurable : BoundConfigurable("Classic Icons") {
     private val tableModel by lazy {
         FileTypeIcons.refresh()
         FileTypeTableModel().also {
-            it.load(settings.excludedFileTypes)
+            it.load(settings.excludedFileTypes, settings.iconMappings)
             it.setCustomIconsDir(settings.customIconsDir)
         }
     }
@@ -50,7 +51,8 @@ class ClassicIconsConfigurable : BoundConfigurable("Classic Icons") {
             columnModel.getColumn(1).maxWidth = 50
             columnModel.getColumn(2).minWidth = 150
             columnModel.getColumn(3).maxWidth = 100
-            preferredScrollableViewportSize = Dimension(600, 220)
+            columnModel.getColumn(5).minWidth = 150
+            preferredScrollableViewportSize = Dimension(800, 220)
 
             // Auto-resize columns based on content
             autoResizeMode = JBTable.AUTO_RESIZE_ALL_COLUMNS
@@ -106,7 +108,7 @@ class ClassicIconsConfigurable : BoundConfigurable("Classic Icons") {
             group("File types (mode \"files and folders\")") {
                 row("Filter:") { cell(filterField).align(AlignX.FILL) }
                 row { scrollCell(table).align(Align.FILL) }
-                row { comment("Detected from the registered file types. File types sharing the same icon are grouped. Untick a group to keep its New UI icon. Filter by file type name, extension, or icon path.") }
+                row { comment("Detected from the registered file types. File types sharing the same icon are grouped. Untick a group to keep its New UI icon. Use the Mapping column to replace specific icons (e.g., /actions/rerun.svg with /actions/restart.svg). Filter by file type name, extension, or icon path.") }
             }
 
             collapsibleGroup("Advanced: additional path filters") {
@@ -133,24 +135,28 @@ class ClassicIconsConfigurable : BoundConfigurable("Classic Icons") {
                     )
                 }
             }
+
+
         }
     }
 
     private val filterField = JBTextField()
 
     override fun isModified(): Boolean =
-        super.isModified() || tableModel.excluded() != settings.excludedFileTypes.toSet()
+        super.isModified() || tableModel.excluded() != settings.excludedFileTypes.toSet() ||
+        tableModel.mappings() != settings.iconMappings
 
     override fun apply() {
         super.apply()
         settings.excludedFileTypes = tableModel.excluded().toMutableList()
+        settings.iconMappings = tableModel.mappings().toMutableMap()
         tableModel.setCustomIconsDir(settings.customIconsDir)
         ClassicIconPatcher.refreshUi()
     }
 
     override fun reset() {
         super.reset()
-        tableModel.load(settings.excludedFileTypes)
+        tableModel.load(settings.excludedFileTypes, settings.iconMappings)
         tableModel.setCustomIconsDir(settings.customIconsDir)
     }
 }

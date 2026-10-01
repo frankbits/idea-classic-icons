@@ -18,6 +18,9 @@ class ClassicIconsSettings : PersistentStateComponent<ClassicIconsSettings.State
 
         /** Dateitypen (Name), deren Icon im Modus "Files and folders" NICHT klassisch sein soll. */
         var excludedFileTypes: MutableList<String> = mutableListOf()
+
+        /** Icon-Mappings: mappt Icon-Pfade auf andere Pfade (z. B. "/actions/rerun.svg" -> "/actions/restart.svg"). */
+        var iconMappings: MutableMap<String, String> = mutableMapOf()
     }
 
     private var state = State()
