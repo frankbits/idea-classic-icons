@@ -1,7 +1,6 @@
 package dev.frankbits.classicicons
 
 import com.intellij.openapi.util.IconLoader
-import com.intellij.ui.icons.IconPathProvider
 import java.io.File
 import java.net.URL
 import javax.swing.Icon
@@ -20,7 +19,10 @@ object AllIconsScanner {
         val icon: Icon?,
         val isFileType: Boolean,
         val fileTypes: Set<String>,
-        val extensions: Set<String>
+        val extensions: Set<String>,
+        val hasClassicEquivalent: Boolean,
+        val isExpuiIcon: Boolean = path.contains("expui/"),
+        val isCustomIcon: Boolean = false
     )
     
     private val FILES_AND_FOLDERS_PREFIXES = listOf("/fileTypes/", "/nodes/", "/modules/")
@@ -37,21 +39,22 @@ object AllIconsScanner {
         // 1. FileType Icons hinzufügen
         FileTypeIcons.refresh()
         for (entry in FileTypeIcons.entries) {
+            val hasClassic = classLoader.getResource(entry.path.removePrefix("/")) != null
             results.add(IconInfo(
                 path = entry.path,
                 icon = entry.icon,
                 isFileType = true,
                 fileTypes = setOf(entry.typeName),
-                extensions = if (entry.extension.isNotEmpty()) setOf(entry.extension) else emptySet()
+                extensions = if (entry.extension.isNotEmpty()) setOf(entry.extension) else emptySet(),
+                hasClassicEquivalent = hasClassic
             ))
         }
         
         // 2. Weitere Icons aus dem ClassLoader finden
-        // Wir versuchen, alle SVG/PNG Dateien im ClassLoader zu finden
         val iconPaths = findIconPathsInClassLoader(classLoader)
         
         for (path in iconPaths) {
-            // Skip expui icons
+            // Skip expui icons - diese werden separat behandelt
             if (path.contains("expui/")) continue
             
             // Skip if already added as file type
@@ -64,16 +67,92 @@ object AllIconsScanner {
                 null
             }
             
+            val hasClassic = resourceUrl != null
+            
             results.add(IconInfo(
                 path = path,
                 icon = icon,
                 isFileType = false,
                 fileTypes = emptySet(),
-                extensions = emptySet()
+                extensions = emptySet(),
+                hasClassicEquivalent = hasClassic
+            ))
+        }
+        
+        // 3. expui Icons als Referenz hinzufügen (optional, für Vergleich)
+        // Diese werden nicht ersetzt, aber es ist nützlich zu sehen, welche es gibt
+        val expuiPaths = findExpuiIconPaths(classLoader)
+        for (path in expuiPaths) {
+            val icon = IconLoader.findIcon(path, classLoader)
+            results.add(IconInfo(
+                path = path,
+                icon = icon,
+                isFileType = false,
+                fileTypes = emptySet(),
+                extensions = emptySet(),
+                hasClassicEquivalent = false,
+                isExpuiIcon = true
             ))
         }
         
         return results.sortedBy { it.path }
+    }
+    
+    /**
+     * Findet Icons aus dem expui/-Verzeichnis
+     */
+    private fun findExpuiIconPaths(classLoader: ClassLoader): Set<String> {
+        val paths = mutableSetOf<String>()
+        
+        // Bekannte expui Icon-Verzeichnisse
+        val expuiDirectories = listOf(
+            "/expui/icons/",
+            "/expui/fileTypes/",
+            "/expui/nodes/",
+            "/expui/actions/",
+            "/expui/objects/",
+        )
+        
+        // Bekannte expui Icons
+        val knownExpuiPaths = listOf(
+            "/expui/icons/file.svg",
+            "/expui/icons/folder.svg",
+            "/expui/icons/module.svg",
+            "/expui/icons/package.svg",
+            "/expui/icons/class.svg",
+            "/expui/icons/method.svg",
+            "/expui/icons/field.svg",
+            "/expui/icons/parameter.svg",
+            "/expui/icons/localVariable.svg",
+            "/expui/fileTypes/java.svg",
+            "/expui/fileTypes/kotlin.svg",
+            "/expui/fileTypes/xml.svg",
+            "/expui/fileTypes/html.svg",
+            "/expui/fileTypes/css.svg",
+            "/expui/fileTypes/js.svg",
+            "/expui/fileTypes/ts.svg",
+            "/expui/fileTypes/python.svg",
+            "/expui/fileTypes/sql.svg",
+            "/expui/fileTypes/markdown.svg",
+            "/expui/fileTypes/json.svg",
+            "/expui/fileTypes/yml.svg",
+            "/expui/fileTypes/properties.svg",
+            "/expui/nodes/folder.svg",
+            "/expui/nodes/file.svg",
+            "/expui/actions/run.svg",
+            "/expui/actions/debug.svg",
+            "/expui/actions/compile.svg",
+            "/expui/objects/gear.svg",
+            "/expui/objects/lightbulb.svg",
+        )
+        
+        for (path in knownExpuiPaths) {
+            if (classLoader.getResource(path.removePrefix("/")) != null) {
+                paths.add(path)
+            }
+        }
+        
+        return paths
     }
     
     /**
@@ -122,11 +201,9 @@ object AllIconsScanner {
             }
         }
         
-        // zusätzlich: versuche bekannte Icon-Pfade
+        // Zusätzlich: versuche bekannte Icon-Pfade
         val knownPaths = listOf(
             "/icons/MarkdownPlugin.svg",
-            "/icons/AllIcons.svg",
-            "/icons/PluginIcons.svg",
             "/icons/jar.svg",
             "/icons/class.svg",
             "/icons/method.svg",
@@ -257,6 +334,7 @@ object AllIconsScanner {
             path.startsWith("/toolbar/") -> "Toolbar"
             path.startsWith("/toolwindows/") -> "Tool Windows"
             path.startsWith("/statusBar/") -> "Status Bar"
+            path.startsWith("/expui/") -> "New UI Icons (expui)"
             else -> "Other"
         }
     }

@@ -43,8 +43,11 @@ class CheckboxTree(private val treeModel: FileTypeTreeModel) : JBTree(treeModel)
     private fun toggleNodeSelection(path: TreePath, node: DefaultMutableTreeNode) {
         when (val userObject = node.userObject) {
             is FileTypeTreeModel.IconPathNode -> {
-                userObject.classic = !userObject.classic
-                treeModel.setAllClassic(userObject, userObject.classic)
+                if (userObject.hasClassicEquivalent) {
+                    userObject.classic = !userObject.classic
+                    treeModel.setAllClassic(userObject, userObject.classic)
+                }
+                // expui Icons können nicht umgeschaltet werden
             }
             is FileTypeTreeModel.FileTypeNode -> {
                 userObject.classic = !userObject.classic
@@ -53,20 +56,45 @@ class CheckboxTree(private val treeModel: FileTypeTreeModel) : JBTree(treeModel)
                 treeModel.updateFromChildren(parent)
             }
             is FileTypeTreeModel.CategoryNode -> {
-                // Toggle all children
-                val newState = !userObject.classic
-                for (i in 0 until node.childCount) {
-                    val child = node.getChildAt(i) as? DefaultMutableTreeNode ?: continue
-                    when (val childUserObject = child.userObject) {
-                        is FileTypeTreeModel.IconPathNode -> {
-                            childUserObject.classic = newState
-                            treeModel.setAllClassic(childUserObject, newState)
+                // Toggle all children (nur für Classic Icons Kategorie)
+                if (userObject.category != "New UI Only Icons (no classic equivalent)") {
+                    val newState = !userObject.classic
+                    for (i in 0 until node.childCount) {
+                        val child = node.getChildAt(i) as? DefaultMutableTreeNode ?: continue
+                        when (val childUserObject = child.userObject) {
+                            is FileTypeTreeModel.CategoryNode -> {
+                                // Rekursiv alle Kinder toggeln
+                                toggleCategoryChildren(child, newState)
+                            }
+                            is FileTypeTreeModel.IconPathNode -> {
+                                if (childUserObject.hasClassicEquivalent) {
+                                    childUserObject.classic = newState
+                                    treeModel.setAllClassic(childUserObject, newState)
+                                }
+                            }
                         }
                     }
                 }
             }
         }
         repaint()
+    }
+    
+    private fun toggleCategoryChildren(node: DefaultMutableTreeNode, newState: Boolean) {
+        for (i in 0 until node.childCount) {
+            val child = node.getChildAt(i) as? DefaultMutableTreeNode ?: continue
+            when (val childUserObject = child.userObject) {
+                is FileTypeTreeModel.CategoryNode -> {
+                    toggleCategoryChildren(child, newState)
+                }
+                is FileTypeTreeModel.IconPathNode -> {
+                    if (childUserObject.hasClassicEquivalent) {
+                        childUserObject.classic = newState
+                        treeModel.setAllClassic(childUserObject, newState)
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -76,14 +104,14 @@ class ClassicIconsConfigurable : BoundConfigurable("Classic Icons") {
     private val treeModel by lazy {
         FileTypeIcons.refresh()
         FileTypeTreeModel().also {
-            it.load(settings.excludedFileTypes, javaClass.classLoader)
+            it.load(settings.excludedFileTypes, javaClass.classLoader, settings.scope)
             it.setCustomIconsDir(settings.customIconsDir)
         }
     }
 
     private val tree by lazy {
         CheckboxTree(treeModel).apply {
-            preferredScrollableViewportSize = Dimension(600, 400)
+            preferredScrollableViewportSize = Dimension(600, 500)
         }
     }
 
@@ -95,9 +123,15 @@ class ClassicIconsConfigurable : BoundConfigurable("Classic Icons") {
                 row { radioButton("Don't use classic icons (New UI)", IconScope.DISABLED) }
                 row { radioButton("Classic icons for everything", IconScope.ALL) }
                 row { radioButton("Classic icons only for files and folders", IconScope.FILES_AND_FOLDERS) }
-            }.bind(settings::scope)
+            }.bind(settings::scope).apply {
+                // Listener für Scope-Änderungen
+                addChangeListener {
+                    treeModel.updateScope(settings.scope)
+                    treeModel.applyFilter(filterField.text.trim())
+                }
+            }
 
-            group("All replaceable icons") {
+            group("All icons") {
                 row("Filter:") { 
                     cell(filterField).align(AlignX.FILL)
                     
@@ -109,7 +143,11 @@ class ClassicIconsConfigurable : BoundConfigurable("Classic Icons") {
                     })
                 }
                 row { scrollCell(tree).align(Align.FILL) }
-                row { comment("All icons that can be replaced by classic icons. Grouped by category. File types have their individual file types as children. Filter by path, file type name, or extension.") }
+                row { 
+                    comment("Icons are grouped into: Classic Icons (replaceable) and New UI Only Icons (no classic equivalent). " +
+                            "File types have their individual file types as children. " +
+                            "Filter by path, file type name, or extension.") 
+                }
             }
 
             collapsibleGroup("Advanced: additional path filters") {
@@ -150,7 +188,7 @@ class ClassicIconsConfigurable : BoundConfigurable("Classic Icons") {
 
     override fun reset() {
         super.reset()
-        treeModel.load(settings.excludedFileTypes, javaClass.classLoader)
+        treeModel.load(settings.excludedFileTypes, javaClass.classLoader, settings.scope)
         treeModel.setCustomIconsDir(settings.customIconsDir)
     }
 }
