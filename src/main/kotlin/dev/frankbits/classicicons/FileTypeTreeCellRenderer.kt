@@ -9,12 +9,12 @@ import javax.swing.JTree
 import javax.swing.tree.DefaultMutableTreeNode
 import javax.swing.tree.DefaultTreeCellRenderer
 import javax.swing.tree.TreeCellRenderer
-import java.awt.BorderLayout
 import java.awt.FlowLayout
 
 /**
  * Custom TreeCellRenderer für die Icon-Baumansicht.
  * Zeigt Checkboxen für IconPathNodes und FileTypeNodes an.
+ * Kategorien werden ohne Checkboxen angezeigt.
  */
 class FileTypeTreeCellRenderer(private val treeModel: FileTypeTreeModel) : TreeCellRenderer {
     private val defaultRenderer = DefaultTreeCellRenderer()
@@ -60,12 +60,28 @@ class FileTypeTreeCellRenderer(private val treeModel: FileTypeTreeModel) : TreeC
         
         // Text und Icon setzen
         when (val userObject = node.userObject) {
+            is FileTypeTreeModel.CategoryNode -> {
+                checkbox.isVisible = false
+                iconLabel.icon = null
+                iconLabel.text = ""
+                textLabel.text = userObject.category
+                panel.toolTipText = null
+                iconLabel.border = null
+            }
             is FileTypeTreeModel.IconPathNode -> {
                 checkbox.isVisible = true
                 checkbox.isSelected = userObject.classic
-                iconLabel.icon = userObject.icon
-                iconLabel.text = ""
-                textLabel.text = userObject.toString()
+                
+                // Icon anzeigen
+                if (userObject.icon != null) {
+                    iconLabel.icon = userObject.icon
+                    iconLabel.text = ""
+                } else {
+                    iconLabel.icon = null
+                    iconLabel.text = ""
+                }
+                
+                textLabel.text = userObject.path
                 
                 // Tooltip für Custom Icons
                 if (treeModel.hasCustomIcon(node)) {

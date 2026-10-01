@@ -52,6 +52,19 @@ class CheckboxTree(private val treeModel: FileTypeTreeModel) : JBTree(treeModel)
                 val parent = node.parent as? FileTypeTreeModel.IconPathNode ?: return
                 treeModel.updateFromChildren(parent)
             }
+            is FileTypeTreeModel.CategoryNode -> {
+                // Toggle all children
+                val newState = !userObject.classic
+                for (i in 0 until node.childCount) {
+                    val child = node.getChildAt(i) as? DefaultMutableTreeNode ?: continue
+                    when (val childUserObject = child.userObject) {
+                        is FileTypeTreeModel.IconPathNode -> {
+                            childUserObject.classic = newState
+                            treeModel.setAllClassic(childUserObject, newState)
+                        }
+                    }
+                }
+            }
         }
         repaint()
     }
@@ -63,14 +76,14 @@ class ClassicIconsConfigurable : BoundConfigurable("Classic Icons") {
     private val treeModel by lazy {
         FileTypeIcons.refresh()
         FileTypeTreeModel().also {
-            it.load(settings.excludedFileTypes)
+            it.load(settings.excludedFileTypes, javaClass.classLoader)
             it.setCustomIconsDir(settings.customIconsDir)
         }
     }
 
     private val tree by lazy {
         CheckboxTree(treeModel).apply {
-            preferredScrollableViewportSize = Dimension(600, 300)
+            preferredScrollableViewportSize = Dimension(600, 400)
         }
     }
 
@@ -84,7 +97,7 @@ class ClassicIconsConfigurable : BoundConfigurable("Classic Icons") {
                 row { radioButton("Classic icons only for files and folders", IconScope.FILES_AND_FOLDERS) }
             }.bind(settings::scope)
 
-            group("File types (mode \"files and folders\")") {
+            group("All replaceable icons") {
                 row("Filter:") { 
                     cell(filterField).align(AlignX.FILL)
                     
@@ -96,7 +109,7 @@ class ClassicIconsConfigurable : BoundConfigurable("Classic Icons") {
                     })
                 }
                 row { scrollCell(tree).align(Align.FILL) }
-                row { comment("Detected from the registered file types. Icons are grouped by path. Untick a group to keep its New UI icon. Filter by file type name, extension, or icon path.") }
+                row { comment("All icons that can be replaced by classic icons. Grouped by category. File types have their individual file types as children. Filter by path, file type name, or extension.") }
             }
 
             collapsibleGroup("Advanced: additional path filters") {
@@ -137,7 +150,7 @@ class ClassicIconsConfigurable : BoundConfigurable("Classic Icons") {
 
     override fun reset() {
         super.reset()
-        treeModel.load(settings.excludedFileTypes)
+        treeModel.load(settings.excludedFileTypes, javaClass.classLoader)
         treeModel.setCustomIconsDir(settings.customIconsDir)
     }
 }
