@@ -12,11 +12,6 @@ import javax.swing.tree.DefaultTreeCellRenderer
 import javax.swing.tree.TreeCellRenderer
 import java.awt.FlowLayout
 
-/**
- * Custom TreeCellRenderer für die Icon-Baumansicht.
- * Zeigt Checkboxen für IconPathNodes und FileTypeNodes an.
- * Kategorien werden ohne Checkboxen angezeigt.
- */
 class FileTypeTreeCellRenderer(private val treeModel: FileTypeTreeModel) : TreeCellRenderer {
     private val defaultRenderer = DefaultTreeCellRenderer()
     private val checkbox = JCheckBox()
@@ -48,7 +43,6 @@ class FileTypeTreeCellRenderer(private val treeModel: FileTypeTreeModel) : TreeC
             tree, value, selected, expanded, leaf, row, hasFocus
         )
         
-        // Hintergrund und Auswahl
         if (selected) {
             panel.background = defaultRenderer.backgroundSelectionColor
             iconLabel.background = defaultRenderer.backgroundSelectionColor
@@ -59,7 +53,6 @@ class FileTypeTreeCellRenderer(private val treeModel: FileTypeTreeModel) : TreeC
             textLabel.background = defaultRenderer.backgroundNonSelectionColor
         }
         
-        // Text und Icon setzen
         when (val userObject = node.userObject) {
             is FileTypeTreeModel.CategoryNode -> {
                 checkbox.isVisible = false
@@ -68,21 +61,14 @@ class FileTypeTreeCellRenderer(private val treeModel: FileTypeTreeModel) : TreeC
                 textLabel.text = userObject.category
                 panel.toolTipText = treeModel.getIconTooltip(node)
                 iconLabel.border = null
-                
-                // Fett für Hauptkategorien
                 textLabel.font = textLabel.font.deriveFont(Font.BOLD)
             }
             is FileTypeTreeModel.IconPathNode -> {
-                // Checkbox ist immer sichtbar, aber nur aktiviert wenn es ein klassisches Äquivalent gibt
-                // ODER wenn ein Custom Icon existiert
                 val hasCustomIcon = treeModel.hasCustomIcon(node)
-                val canBeReplaced = userObject.hasClassicEquivalent || hasCustomIcon
-                
                 checkbox.isVisible = true
                 checkbox.isSelected = userObject.classic
-                checkbox.isEnabled = canBeReplaced
+                checkbox.isEnabled = userObject.hasClassicEquivalent
                 
-                // Icon anzeigen
                 if (userObject.icon != null) {
                     iconLabel.icon = userObject.icon
                     iconLabel.text = ""
@@ -93,12 +79,9 @@ class FileTypeTreeCellRenderer(private val treeModel: FileTypeTreeModel) : TreeC
                 
                 textLabel.text = userObject.path
                 panel.toolTipText = treeModel.getIconTooltip(node)
-                
-                // Textfarbe: normal für ersetzbare Icons
                 textLabel.foreground = defaultRenderer.textNonSelectionColor
                 iconLabel.foreground = defaultRenderer.textNonSelectionColor
                 
-                // Farbiger Indikator für Custom Icons
                 iconLabel.border = if (hasCustomIcon) {
                     javax.swing.border.CompoundBorder(
                         javax.swing.border.MatteBorder(0, 1, 0, 0, java.awt.Color.ORANGE),
