@@ -11,14 +11,12 @@ import javax.swing.tree.TreeNode
  * 
  * Struktur:
  * - Wurzel
- *   - Classic Icons (Icons mit klassischem Äquivalent)
+ *   - All Icons
  *     - File Types
  *       - Icon-Pfad (z.B. /fileTypes/java.svg)
  *         - FileType (z.B. Java)
  *     - Andere Kategorien (Actions, Objects, etc.)
  *       - Icon-Pfad
- *   - New UI Only Icons (Icons OHNE klassisches Äquivalent - expui Icons)
- *     - Icon-Pfad
  */
 class FileTypeTreeModel : DefaultTreeModel(DefaultMutableTreeNode("Icons")) {
     private var customIconsDir: String = ""
@@ -26,8 +24,6 @@ class FileTypeTreeModel : DefaultTreeModel(DefaultMutableTreeNode("Icons")) {
     
     // Originale Daten für Filter-Reset
     private var allIcons: List<AllIconsScanner.IconInfo> = emptyList()
-    private var classicIcons: List<AllIconsScanner.IconInfo> = emptyList()
-    private var newUiOnlyIcons: List<AllIconsScanner.IconInfo> = emptyList()
 
     class IconPathNode(
         val path: String,
@@ -62,20 +58,16 @@ class FileTypeTreeModel : DefaultTreeModel(DefaultMutableTreeNode("Icons")) {
         // Scanne alle Icons
         val allIconsList = AllIconsScanner.scanAllAvailableIcons(classLoader)
         allIcons = allIconsList
-        
-        // Trenne in Icons mit und ohne klassisches Äquivalent
-        classicIcons = allIconsList.filter { it.hasClassicEquivalent && !it.isExpuiIcon }
-        newUiOnlyIcons = allIconsList.filter { !it.hasClassicEquivalent || it.isExpuiIcon }
 
-        // 1. Classic Icons (mit klassischem Äquivalent)
-        val classicRoot = CategoryNode("Classic Icons (replaceable)")
-        
-        // Gruppiere Classic Icons nach Kategorien
-        val groupedClassic = classicIcons.groupBy { 
+        // Gruppiere alle Icons nach Kategorien
+        val groupedByCategory = allIconsList.groupBy { 
             AllIconsScanner.getCategoryForPath(it.path) 
         }
-        
-        for ((category, icons) in groupedClassic.entries.sortedBy { it.key }) {
+
+        // Hauptknoten: "All Icons"
+        val allIconsRoot = CategoryNode("All Icons")
+
+        for ((category, icons) in groupedByCategory.entries.sortedBy { it.key }) {
             val categoryNode = CategoryNode(category)
             
             // Gruppiere nach Pfad
@@ -87,20 +79,23 @@ class FileTypeTreeModel : DefaultTreeModel(DefaultMutableTreeNode("Icons")) {
                     entry.fileTypes.all { ft -> ft in ex } 
                 }
                 
+                // Bestimme, ob der Pfad aktiviert sein sollte
+                val shouldBeClassic = shouldShowClassic(path, scope, firstIcon.hasClassicEquivalent, firstIcon.isExpuiIcon)
+                
                 val pathNode = IconPathNode(
                     path = path,
                     icon = firstIcon.icon,
                     isFileType = firstIcon.isFileType,
                     fileTypes = pathIcons.flatMap { it.fileTypes }.toSet(),
                     extensions = pathIcons.flatMap { it.extensions }.toSet(),
-                    hasClassicEquivalent = true,
-                    isExpuiIcon = false,
-                    classic = !allExcluded && shouldShowClassic(path, scope)
+                    hasClassicEquivalent = firstIcon.hasClassicEquivalent,
+                    isExpuiIcon = firstIcon.isExpuiIcon,
+                    classic = !allExcluded && shouldBeClassic
                 )
                 
                 if (firstIcon.isFileType) {
                     // Füge FileTypes als Kinder hinzu
-                    val entries = classicIcons.filter { it.path == path }
+                    val entries = icons.filter { it.path == path }
                     for (entry in entries.sortedBy { it.fileTypes.firstOrNull() ?: "" }) {
                         for (fileType in entry.fileTypes) {
                             val isExcluded = fileType in ex
@@ -119,63 +114,40 @@ class FileTypeTreeModel : DefaultTreeModel(DefaultMutableTreeNode("Icons")) {
             }
             
             if (categoryNode.childCount > 0) {
-                classicRoot.add(categoryNode)
+                allIconsRoot.add(categoryNode)
             }
         }
         
-        if (classicRoot.childCount > 0) {
-            root.add(classicRoot)
-        }
-
-        // 2. New UI Only Icons (ohne klassisches Äquivalent)
-        val newUiRoot = CategoryNode("New UI Only Icons (no classic equivalent)")
-        
-        // Gruppiere New UI Icons nach Kategorien
-        val groupedNewUi = newUiOnlyIcons.groupBy { 
-            AllIconsScanner.getCategoryForPath(it.path) 
-        }
-        
-        for ((category, icons) in groupedNewUi.entries.sortedBy { it.key }) {
-            val categoryNode = CategoryNode(category)
-            
-            for (iconInfo in icons.sortedBy { it.path }) {
-                val pathNode = IconPathNode(
-                    path = iconInfo.path,
-                    icon = iconInfo.icon,
-                    isFileType = iconInfo.isFileType,
-                    fileTypes = iconInfo.fileTypes,
-                    extensions = iconInfo.extensions,
-                    hasClassicEquivalent = false,
-                    isExpuiIcon = iconInfo.isExpuiIcon,
-                    classic = false // Kann nicht aktiviert werden
-                )
-                
-                categoryNode.add(pathNode)
-            }
-            
-            if (categoryNode.childCount > 0) {
-                newUiRoot.add(categoryNode)
-            }
-        }
-        
-        if (newUiRoot.childCount > 0) {
-            root.add(newUiRoot)
+        if (allIconsRoot.childCount > 0) {
+            root.add(allIconsRoot)
         }
 
         reload()
     }
 
-    private fun shouldShowClassic(path: String, scope: IconScope): Boolean {
-        return when (scope) {
-            IconScope.DISABLED -> false
-            IconScope.ALL -> true
-            IconScope.FILES_AND_FOLDERS -> {
-                val filesAndFolders = listOf("/fileTypes/", "/nodes/", "/modules/")
-                filesAndFolders.any { path.startsWith(it) } ||
-                path.endsWith("File.svg") || 
-                path.endsWith("FileType.svg")
+    private fun shouldShowClassic(path: String, scope: IconScope, hasClassicEquivalent: Boolean, isExpuiIcon: Boolean): Boolean {
+        // Custom Icons werden immer zuerst geprüft, also können auch expui Icons
+        // durch Custom Icons ersetzt werden
+        // Die Frage ist: sollte der Checkbox standardmäßig aktiviert sein?
+        
+        // Wenn es ein klassisches Äquivalent gibt, dann nach Scope entscheiden
+        if (hasClassicEquivalent && !isExpuiIcon) {
+            return when (scope) {
+                IconScope.DISABLED -> false
+                IconScope.ALL -> true
+                IconScope.FILES_AND_FOLDERS -> {
+                    val filesAndFolders = listOf("/fileTypes/", "/nodes/", "/modules/")
+                    filesAndFolders.any { path.startsWith(it) } ||
+                    path.endsWith("File.svg") || 
+                    path.endsWith("FileType.svg")
+                }
             }
         }
+        
+        // Wenn es kein klassisches Äquivalent gibt (expui Icon):
+        // Standardmäßig aktiviert, damit Custom Icons funktionieren
+        // Der tatsächliche Ersatz hängt davon ab, ob ein Custom Icon existiert
+        return true
     }
 
     fun setCustomIconsDir(dir: String) {
@@ -203,16 +175,18 @@ class FileTypeTreeModel : DefaultTreeModel(DefaultMutableTreeNode("Icons")) {
         when (val userObject = node.userObject) {
             is IconPathNode -> {
                 if (hasCustomIcon(node)) return "Overridden by custom icon"
-                if (!userObject.hasClassicEquivalent) return "No classic equivalent - always shows New UI icon"
-                if (userObject.isExpuiIcon) return "New UI icon - no classic version available"
+                if (!userObject.hasClassicEquivalent) {
+                    return "No classic equivalent - shows New UI icon (unless custom icon exists)"
+                }
+                if (userObject.isExpuiIcon) {
+                    return "New UI icon - no classic version, but can be replaced by custom icon"
+                }
             }
             is FileTypeNode -> {
                 return "Icon path: ${userObject.path}"
             }
             is CategoryNode -> {
-                if (userObject.category == "New UI Only Icons (no classic equivalent)") {
-                    return "These icons have no classic equivalent. They will always show the New UI icon."
-                }
+                return null
             }
         }
         return null
@@ -223,9 +197,6 @@ class FileTypeTreeModel : DefaultTreeModel(DefaultMutableTreeNode("Icons")) {
         
         for (i in 0 until root.childCount) {
             val categoryNode = root.getChildAt(i) as? CategoryNode ?: continue
-            
-            // Nur Classic Icons Kategorie hat ausschaltbare Icons
-            if (categoryNode.category == "New UI Only Icons (no classic equivalent)") continue
             
             for (j in 0 until categoryNode.childCount) {
                 val subCategoryNode = categoryNode.getChildAt(j) as? CategoryNode ?: continue
@@ -299,13 +270,18 @@ class FileTypeTreeModel : DefaultTreeModel(DefaultMutableTreeNode("Icons")) {
                 for (k in 0 until subCategoryNode.childCount) {
                     val pathNode = subCategoryNode.getChildAt(k) as? IconPathNode ?: continue
                     
-                    if (pathNode.hasClassicEquivalent) {
-                        pathNode.classic = shouldShowClassic(pathNode.path, scope)
-                        // Aktualisiere Kinder
-                        for (l in 0 until pathNode.childCount) {
-                            val fileTypeNode = pathNode.getChildAt(l) as? FileTypeNode ?: continue
-                            fileTypeNode.classic = pathNode.classic
-                        }
+                    val shouldBeClassic = shouldShowClassic(
+                        pathNode.path, 
+                        scope, 
+                        pathNode.hasClassicEquivalent,
+                        pathNode.isExpuiIcon
+                    )
+                    
+                    pathNode.classic = shouldBeClassic
+                    // Aktualisiere Kinder
+                    for (l in 0 until pathNode.childCount) {
+                        val fileTypeNode = pathNode.getChildAt(l) as? FileTypeNode ?: continue
+                        fileTypeNode.classic = pathNode.classic
                     }
                 }
             }
@@ -336,52 +312,17 @@ class FileTypeTreeModel : DefaultTreeModel(DefaultMutableTreeNode("Icons")) {
         // Filter anwenden
         root.removeAllChildren()
         
-        // Classic Icons
-        val classicRoot = CategoryNode("Classic Icons (replaceable)")
-        filterCategory(classicIcons, classicRoot, pattern, state)
+        // All Icons
+        val allIconsRoot = CategoryNode("All Icons")
         
-        if (classicRoot.childCount > 0) {
-            root.add(classicRoot)
+        val groupedByCategory = allIcons.groupBy { 
+            AllIconsScanner.getCategoryForPath(it.path) 
         }
         
-        // New UI Only Icons
-        val newUiRoot = CategoryNode("New UI Only Icons (no classic equivalent)")
-        filterCategory(newUiOnlyIcons, newUiRoot, pattern, state)
-        
-        if (newUiRoot.childCount > 0) {
-            root.add(newUiRoot)
-        }
-        
-        reload()
-    }
-
-    private fun saveState(node: DefaultMutableTreeNode, state: MutableMap<String, Boolean>) {
-        when (val userObject = node.userObject) {
-            is IconPathNode -> {
-                state[userObject.path] = userObject.classic
-                for (i in 0 until node.childCount) {
-                    val child = node.getChildAt(i) as? DefaultMutableTreeNode ?: continue
-                    saveState(child, state)
-                }
-            }
-            is FileTypeNode -> {
-                state["${userObject.path}|${userObject.fileType}"] = userObject.classic
-            }
-        }
-    }
-
-    private fun filterCategory(
-        icons: List<AllIconsScanner.IconInfo>,
-        categoryRoot: CategoryNode,
-        pattern: Regex,
-        state: Map<String, Boolean>
-    ) {
-        val groupedByCategory = icons.groupBy { AllIconsScanner.getCategoryForPath(it.path) }
-        
-        for ((category, categoryIcons) in groupedByCategory.entries.sortedBy { it.key }) {
+        for ((category, icons) in groupedByCategory.entries.sortedBy { it.key }) {
             val categoryNode = CategoryNode(category)
             
-            val groupedByPath = categoryIcons.groupBy { it.path }
+            val groupedByPath = icons.groupBy { it.path }
             
             for ((path, pathIcons) in groupedByPath.entries.sortedBy { it.key }) {
                 val firstIcon = pathIcons.first()
@@ -398,6 +339,13 @@ class FileTypeTreeModel : DefaultTreeModel(DefaultMutableTreeNode("Icons")) {
                             entry.fileTypes.all { ft -> state["$path|$ft"] ?: false } 
                         }
                         
+                        val shouldBeClassic = shouldShowClassic(
+                            path, 
+                            ClassicIconsSettings.getInstance().state.scope,
+                            firstIcon.hasClassicEquivalent,
+                            firstIcon.isExpuiIcon
+                        )
+                        
                         val pathNode = IconPathNode(
                             path = path,
                             icon = firstIcon.icon,
@@ -406,7 +354,7 @@ class FileTypeTreeModel : DefaultTreeModel(DefaultMutableTreeNode("Icons")) {
                             extensions = pathIcons.flatMap { it.extensions }.toSet(),
                             hasClassicEquivalent = firstIcon.hasClassicEquivalent,
                             isExpuiIcon = firstIcon.isExpuiIcon,
-                            classic = !(allExcluded || matchingFileTypes.all { state["$path|$it"] ?: false })
+                            classic = !(allExcluded || matchingFileTypes.all { state["$path|$it"] ?: false }) && shouldBeClassic
                         )
                         
                         for (fileType in matchingFileTypes.sorted()) {
@@ -419,7 +367,14 @@ class FileTypeTreeModel : DefaultTreeModel(DefaultMutableTreeNode("Icons")) {
                     }
                 } else {
                     if (pathMatches) {
-                        val classic = state[path] ?: true
+                        val shouldBeClassic = shouldShowClassic(
+                            path, 
+                            ClassicIconsSettings.getInstance().state.scope,
+                            firstIcon.hasClassicEquivalent,
+                            firstIcon.isExpuiIcon
+                        )
+                        val classic = (state[path] ?: shouldBeClassic) && shouldBeClassic
+                        
                         val pathNode = IconPathNode(
                             path = path,
                             icon = firstIcon.icon,
@@ -437,7 +392,28 @@ class FileTypeTreeModel : DefaultTreeModel(DefaultMutableTreeNode("Icons")) {
             }
             
             if (categoryNode.childCount > 0) {
-                categoryRoot.add(categoryNode)
+                allIconsRoot.add(categoryNode)
+            }
+        }
+        
+        if (allIconsRoot.childCount > 0) {
+            root.add(allIconsRoot)
+        }
+        
+        reload()
+    }
+
+    private fun saveState(node: DefaultMutableTreeNode, state: MutableMap<String, Boolean>) {
+        when (val userObject = node.userObject) {
+            is IconPathNode -> {
+                state[userObject.path] = userObject.classic
+                for (i in 0 until node.childCount) {
+                    val child = node.getChildAt(i) as? DefaultMutableTreeNode ?: continue
+                    saveState(child, state)
+                }
+            }
+            is FileTypeNode -> {
+                state["${userObject.path}|${userObject.fileType}"] = userObject.classic
             }
         }
     }

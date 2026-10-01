@@ -43,11 +43,14 @@ class CheckboxTree(private val treeModel: FileTypeTreeModel) : JBTree(treeModel)
     private fun toggleNodeSelection(path: TreePath, node: DefaultMutableTreeNode) {
         when (val userObject = node.userObject) {
             is FileTypeTreeModel.IconPathNode -> {
-                if (userObject.hasClassicEquivalent) {
+                // Prüfe ob das Icon ersetzt werden kann (klassisches Äquivalent oder Custom Icon)
+                val hasCustomIcon = treeModel.hasCustomIcon(node)
+                val canBeReplaced = userObject.hasClassicEquivalent || hasCustomIcon
+                
+                if (canBeReplaced) {
                     userObject.classic = !userObject.classic
                     treeModel.setAllClassic(userObject, userObject.classic)
                 }
-                // expui Icons können nicht umgeschaltet werden
             }
             is FileTypeTreeModel.FileTypeNode -> {
                 userObject.classic = !userObject.classic
@@ -56,21 +59,21 @@ class CheckboxTree(private val treeModel: FileTypeTreeModel) : JBTree(treeModel)
                 treeModel.updateFromChildren(parent)
             }
             is FileTypeTreeModel.CategoryNode -> {
-                // Toggle all children (nur für Classic Icons Kategorie)
-                if (userObject.category != "New UI Only Icons (no classic equivalent)") {
-                    val newState = !userObject.classic
-                    for (i in 0 until node.childCount) {
-                        val child = node.getChildAt(i) as? DefaultMutableTreeNode ?: continue
-                        when (val childUserObject = child.userObject) {
-                            is FileTypeTreeModel.CategoryNode -> {
-                                // Rekursiv alle Kinder toggeln
-                                toggleCategoryChildren(child, newState)
-                            }
-                            is FileTypeTreeModel.IconPathNode -> {
-                                if (childUserObject.hasClassicEquivalent) {
-                                    childUserObject.classic = newState
-                                    treeModel.setAllClassic(childUserObject, newState)
-                                }
+                // Toggle all children
+                val newState = !userObject.classic
+                for (i in 0 until node.childCount) {
+                    val child = node.getChildAt(i) as? DefaultMutableTreeNode ?: continue
+                    when (val childUserObject = child.userObject) {
+                        is FileTypeTreeModel.CategoryNode -> {
+                            // Rekursiv alle Kinder toggeln
+                            toggleCategoryChildren(child, newState)
+                        }
+                        is FileTypeTreeModel.IconPathNode -> {
+                            val hasCustomIcon = treeModel.hasCustomIcon(child)
+                            val canBeReplaced = childUserObject.hasClassicEquivalent || hasCustomIcon
+                            if (canBeReplaced) {
+                                childUserObject.classic = newState
+                                treeModel.setAllClassic(childUserObject, newState)
                             }
                         }
                     }
@@ -88,7 +91,9 @@ class CheckboxTree(private val treeModel: FileTypeTreeModel) : JBTree(treeModel)
                     toggleCategoryChildren(child, newState)
                 }
                 is FileTypeTreeModel.IconPathNode -> {
-                    if (childUserObject.hasClassicEquivalent) {
+                    val hasCustomIcon = treeModel.hasCustomIcon(child)
+                    val canBeReplaced = childUserObject.hasClassicEquivalent || hasCustomIcon
+                    if (canBeReplaced) {
                         childUserObject.classic = newState
                         treeModel.setAllClassic(childUserObject, newState)
                     }
@@ -144,8 +149,8 @@ class ClassicIconsConfigurable : BoundConfigurable("Classic Icons") {
                 }
                 row { scrollCell(tree).align(Align.FILL) }
                 row { 
-                    comment("Icons are grouped into: Classic Icons (replaceable) and New UI Only Icons (no classic equivalent). " +
-                            "File types have their individual file types as children. " +
+                    comment("All icons that can be replaced. Icons without a classic equivalent are shown in the list " +
+                            "and can be replaced by custom icons. File types have their individual file types as children. " +
                             "Filter by path, file type name, or extension.") 
                 }
             }
@@ -170,7 +175,7 @@ class ClassicIconsConfigurable : BoundConfigurable("Classic Icons") {
                     comment(
                         "Mirror the icon paths from the tree above, e.g. <code>fileTypes/java.svg</code> or " +
                             "<code>icons/MarkdownPlugin.svg</code>. Files in this folder win over everything else. " +
-                            "SVG or PNG."
+                            "SVG or PNG. Custom icons can replace ANY icon, including those without a classic equivalent."
                     )
                 }
             }

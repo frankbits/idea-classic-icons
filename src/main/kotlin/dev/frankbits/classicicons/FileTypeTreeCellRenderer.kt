@@ -16,7 +16,6 @@ import java.awt.FlowLayout
  * Custom TreeCellRenderer für die Icon-Baumansicht.
  * Zeigt Checkboxen für IconPathNodes und FileTypeNodes an.
  * Kategorien werden ohne Checkboxen angezeigt.
- * New UI Only Icons werden grauer dargestellt.
  */
 class FileTypeTreeCellRenderer(private val treeModel: FileTypeTreeModel) : TreeCellRenderer {
     private val defaultRenderer = DefaultTreeCellRenderer()
@@ -71,17 +70,17 @@ class FileTypeTreeCellRenderer(private val treeModel: FileTypeTreeModel) : TreeC
                 iconLabel.border = null
                 
                 // Fett für Hauptkategorien
-                if (userObject.category == "Classic Icons (replaceable)" || 
-                    userObject.category == "New UI Only Icons (no classic equivalent)") {
-                    textLabel.font = textLabel.font.deriveFont(Font.BOLD)
-                } else {
-                    textLabel.font = textLabel.font.deriveFont(Font.PLAIN)
-                }
+                textLabel.font = textLabel.font.deriveFont(Font.BOLD)
             }
             is FileTypeTreeModel.IconPathNode -> {
-                checkbox.isVisible = userObject.hasClassicEquivalent
+                // Checkbox ist immer sichtbar, aber nur aktiviert wenn es ein klassisches Äquivalent gibt
+                // ODER wenn ein Custom Icon existiert
+                val hasCustomIcon = treeModel.hasCustomIcon(node)
+                val canBeReplaced = userObject.hasClassicEquivalent || hasCustomIcon
+                
+                checkbox.isVisible = true
                 checkbox.isSelected = userObject.classic
-                checkbox.isEnabled = userObject.hasClassicEquivalent
+                checkbox.isEnabled = canBeReplaced
                 
                 // Icon anzeigen
                 if (userObject.icon != null) {
@@ -95,17 +94,12 @@ class FileTypeTreeCellRenderer(private val treeModel: FileTypeTreeModel) : TreeC
                 textLabel.text = userObject.path
                 panel.toolTipText = treeModel.getIconTooltip(node)
                 
-                // Grau für Icons ohne klassisches Äquivalent
-                if (!userObject.hasClassicEquivalent || userObject.isExpuiIcon) {
-                    textLabel.foreground = java.awt.Color.GRAY
-                    iconLabel.foreground = java.awt.Color.GRAY
-                } else {
-                    textLabel.foreground = defaultRenderer.textNonSelectionColor
-                    iconLabel.foreground = defaultRenderer.textNonSelectionColor
-                }
+                // Textfarbe: normal für ersetzbare Icons
+                textLabel.foreground = defaultRenderer.textNonSelectionColor
+                iconLabel.foreground = defaultRenderer.textNonSelectionColor
                 
                 // Farbiger Indikator für Custom Icons
-                iconLabel.border = if (treeModel.hasCustomIcon(node)) {
+                iconLabel.border = if (hasCustomIcon) {
                     javax.swing.border.CompoundBorder(
                         javax.swing.border.MatteBorder(0, 1, 0, 0, java.awt.Color.ORANGE),
                         javax.swing.border.EmptyBorder(0, 0, 0, 0)
@@ -117,6 +111,7 @@ class FileTypeTreeCellRenderer(private val treeModel: FileTypeTreeModel) : TreeC
             is FileTypeTreeModel.FileTypeNode -> {
                 checkbox.isVisible = true
                 checkbox.isSelected = userObject.classic
+                checkbox.isEnabled = true
                 iconLabel.icon = null
                 iconLabel.text = ""
                 textLabel.text = "${userObject.fileType}${if (userObject.extension.isNotEmpty()) " (${userObject.extension})" else ""}"
