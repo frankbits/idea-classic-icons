@@ -340,7 +340,7 @@ object AllIconsScanner {
         return categorized
     }
     
-    fun getCategoryForPath(path: String): String {
+    internal fun getCategoryForPath(path: String): String {
         return when {
             path.startsWith("/fileTypes/") -> "File Types"
             path.startsWith("/nodes/") -> "Nodes"

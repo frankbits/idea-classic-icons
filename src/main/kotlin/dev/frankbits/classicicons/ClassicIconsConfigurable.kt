@@ -6,90 +6,11 @@ import com.intellij.openapi.ui.DialogPanel
 import com.intellij.openapi.ui.TextFieldWithBrowseButton
 import com.intellij.ui.DocumentAdapter
 import com.intellij.ui.components.JBTextField
+import com.intellij.ui.components.JBTreeTable
 import com.intellij.ui.dsl.builder.*
 import java.awt.Dimension
-import java.awt.event.MouseAdapter
-import java.awt.event.MouseEvent
-import javax.swing.JTree
+import javax.swing.JScrollPane
 import javax.swing.event.DocumentEvent
-import javax.swing.tree.DefaultMutableTreeNode
-import javax.swing.tree.TreePath
-import javax.swing.tree.TreeSelectionModel
-
-class CheckboxTree(private val treeModel: FileTypeTreeModel) : JTree(treeModel) {
-    init {
-        cellRenderer = FileTypeTreeCellRenderer(treeModel)
-        selectionModel.selectionMode = TreeSelectionModel.SINGLE_TREE_SELECTION
-        isRootVisible = false
-        showsRootHandles = true
-        preferredScrollableViewportSize = Dimension(600, 500)
-        
-        addMouseListener(object : MouseAdapter() {
-            override fun mouseClicked(e: MouseEvent) {
-                val path = getPathForLocation(e.x, e.y) ?: return
-                val node = path.lastPathComponent as? DefaultMutableTreeNode ?: return
-                
-                val bounds = getPathBounds(path) ?: return
-                val checkboxWidth = 20
-                
-                if (e.x - bounds.x <= checkboxWidth) {
-                    toggleNodeSelection(path, node)
-                }
-            }
-        })
-    }
-    
-    private fun toggleNodeSelection(path: TreePath, node: DefaultMutableTreeNode) {
-        when (val userObject = node.userObject) {
-            is FileTypeTreeModel.IconPathNode -> {
-                if (userObject.hasClassicEquivalent) {
-                    userObject.classic = !userObject.classic
-                    treeModel.setAllClassic(userObject, userObject.classic)
-                }
-            }
-            is FileTypeTreeModel.FileTypeNode -> {
-                userObject.classic = !userObject.classic
-                val parent = node.parent as? FileTypeTreeModel.IconPathNode ?: return
-                treeModel.updateFromChildren(parent)
-            }
-            is FileTypeTreeModel.CategoryNode -> {
-                val newState = false
-                for (i in 0 until node.childCount) {
-                    val child = node.getChildAt(i) as? DefaultMutableTreeNode ?: continue
-                    when (val childUserObject = child.userObject) {
-                        is FileTypeTreeModel.CategoryNode -> {
-                            toggleCategoryChildren(child, newState)
-                        }
-                        is FileTypeTreeModel.IconPathNode -> {
-                            if (childUserObject.hasClassicEquivalent) {
-                                childUserObject.classic = newState
-                                treeModel.setAllClassic(childUserObject, newState)
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        repaint()
-    }
-    
-    private fun toggleCategoryChildren(node: DefaultMutableTreeNode, newState: Boolean) {
-        for (i in 0 until node.childCount) {
-            val child = node.getChildAt(i) as? DefaultMutableTreeNode ?: continue
-            when (val childUserObject = child.userObject) {
-                is FileTypeTreeModel.CategoryNode -> {
-                    toggleCategoryChildren(child, newState)
-                }
-                is FileTypeTreeModel.IconPathNode -> {
-                    if (childUserObject.hasClassicEquivalent) {
-                        childUserObject.classic = newState
-                        treeModel.setAllClassic(childUserObject, newState)
-                    }
-                }
-            }
-        }
-    }
-}
 
 class ClassicIconsConfigurable : BoundConfigurable("Classic Icons") {
     private val settings get() = ClassicIconsSettings.getInstance().state
@@ -102,8 +23,46 @@ class ClassicIconsConfigurable : BoundConfigurable("Classic Icons") {
         }
     }
 
-    private val tree by lazy {
-        CheckboxTree(treeModel)
+    private val treeTableModel by lazy {
+        IconTreeTableModel(treeModel)
+    }
+
+    private val treeTable by lazy {
+        JBTreeTable(treeTableModel).apply {
+            setShowsRootHandles(true)
+            setRootVisible(false)
+            preferredViewportSize = Dimension(600, 500)
+            
+            // Configure columns
+            val classicColumn = getColumnModel().getColumn(0)
+            classicColumn.maxWidth = 60
+            classicColumn.minWidth = 60
+            classicColumn.preferredWidth = 60
+            
+            val iconColumn = getColumnModel().getColumn(1)
+            iconColumn.maxWidth = 30
+            iconColumn.minWidth = 30
+            iconColumn.preferredWidth = 30
+            
+            val pathColumn = getColumnModel().getColumn(2)
+            pathColumn.preferredWidth = 300
+            pathColumn.minWidth = 100
+            
+            val fileTypesColumn = getColumnModel().getColumn(3)
+            fileTypesColumn.preferredWidth = 150
+            fileTypesColumn.minWidth = 100
+            
+            val extensionsColumn = getColumnModel().getColumn(4)
+            extensionsColumn.preferredWidth = 100
+            extensionsColumn.minWidth = 80
+            
+            // Enable row selection
+            setSelectionMode(javax.swing.ListSelectionModel.SINGLE_SELECTION)
+            
+            // Set custom renderer for the Icon column
+            getColumnModel().getColumn(1).cellRenderer = IconCellRenderer(treeModel)
+            getColumnModel().getColumn(0).cellRenderer = CheckboxCellRenderer(treeModel)
+        }
     }
 
     private val filterField = JBTextField()
@@ -114,7 +73,11 @@ class ClassicIconsConfigurable : BoundConfigurable("Classic Icons") {
                 row { radioButton("Don't use classic icons (New UI)", IconScope.DISABLED) }
                 row { radioButton("Classic icons for everything", IconScope.ALL) }
                 row { radioButton("Classic icons only for files and folders", IconScope.FILES_AND_FOLDERS) }
-            }.bind(settings::scope)
+            }.bind(settings::scope).apply {
+                addChangeListener {
+                    treeModel.updateScope(settings.scope)
+                }
+            }
 
             group("All icons") {
                 row("Filter:") { 
@@ -126,7 +89,9 @@ class ClassicIconsConfigurable : BoundConfigurable("Classic Icons") {
                         }
                     })
                 }
-                row { scrollCell(tree).align(Align.FILL) }
+                row { 
+                    cell(JScrollPane(treeTable)).align(Align.FILL)
+                }
                 row { 
                     comment("All icons that can be replaced. Icons with a classic equivalent can be toggled. " +
                             "Icons without classic equivalent are listed for reference and can be replaced by custom icons. " +

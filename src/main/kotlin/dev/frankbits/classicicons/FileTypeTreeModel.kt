@@ -225,7 +225,7 @@ class FileTypeTreeModel : DefaultTreeModel(DefaultMutableTreeNode("Icons")) {
         pathNode.classic = when {
             allClassic -> true
             noneClassic -> false
-            else -> false
+            else -> allClassic
         }
         reload(pathNode)
     }
