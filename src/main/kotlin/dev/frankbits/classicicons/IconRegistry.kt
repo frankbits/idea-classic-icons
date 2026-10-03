@@ -45,37 +45,32 @@ object IconRegistry {
     private fun record(path: String): IconRecord =
         iconsByPath.getOrPut(path) { IconRecord(path, null) }
 
-    /** Records a path without replacing an icon already associated with it. */
-    fun recordPath(path: String) {
-        synchronized(iconsByPath) { record(path).metadata += IconMetadata.Runtime }
-    }
-
-    /** Records a path and its resolved icon. */
-    fun recordPath(path: String, icon: Icon) {
+    private fun updateRecord(path: String, icon: Icon?, metadata: IconMetadata) {
         synchronized(iconsByPath) {
             val entry = record(path)
-            entry.icon = icon
-            entry.metadata += IconMetadata.Runtime
+            val isManagerMetadata = metadata !is IconMetadata.Runtime
+            val hasManagerMetadata = entry.metadata.any { it !is IconMetadata.Runtime }
+            if (icon != null && (isManagerMetadata || !hasManagerMetadata)) {
+                entry.icon = icon
+            }
+            entry.metadata += metadata
         }
     }
+
+    /** Records a runtime-discovered path without a resolved icon. */
+    fun recordPath(path: String) = updateRecord(path, null, IconMetadata.Runtime)
+
+    /** Records a runtime-discovered path and its resolved icon. */
+    fun recordPath(path: String, icon: Icon) =
+        updateRecord(path, icon, IconMetadata.Runtime)
 
     /** Adds FileTypeManager metadata to the record for [path]. */
-    fun recordFileType(path: String, icon: Icon, typeName: String, extension: String) {
-        synchronized(iconsByPath) {
-            val entry = record(path)
-            entry.icon = icon
-            entry.metadata += IconMetadata.FileType(typeName, extension)
-        }
-    }
+    fun recordFileType(path: String, icon: Icon, typeName: String, extension: String) =
+        updateRecord(path, icon, IconMetadata.FileType(typeName, extension))
 
     /** Adds ActionManager metadata to the record for [path]. */
-    fun recordAction(path: String, icon: Icon, actionId: String) {
-        synchronized(iconsByPath) {
-            val entry = record(path)
-            entry.icon = icon
-            entry.metadata += IconMetadata.Action(actionId)
-        }
-    }
+    fun recordAction(path: String, icon: Icon, actionId: String) =
+        updateRecord(path, icon, IconMetadata.Action(actionId))
 
     /** Returns a snapshot suitable for displaying the registry in the settings UI. */
     fun iconRecords(): List<IconRecord> =
