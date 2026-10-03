@@ -28,7 +28,7 @@ object ClassicIconPatcher : IconPathPatcher() {
         }
     }
 
-    /** Path prefixes treated as file/folder icons in the restricted scope. */
+    /** Path prefixes included by the Files and folders preset. */
     private val FILES_AND_FOLDERS = listOf("/fileTypes/", "/nodes/", "/modules/")
 
     /**
@@ -79,7 +79,7 @@ object ClassicIconPatcher : IconPathPatcher() {
         return null
     }
 
-    /** Checks whether [path] belongs to the restricted files-and-folders scope. */
+    /** Checks whether [path] belongs to the Files and folders preset. */
     internal fun isFileOrFolderIcon(
         path: String,
         state: ClassicIconsSettings.State,

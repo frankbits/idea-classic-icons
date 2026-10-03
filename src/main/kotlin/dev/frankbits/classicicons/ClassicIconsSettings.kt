@@ -2,8 +2,14 @@ package dev.frankbits.classicicons
 
 import com.intellij.openapi.components.*
 
-/** Defines the set of icon paths eligible for classic icon replacement. */
-enum class IconScope { DISABLED, ENABLED }
+/** Defines whether the path-based icon selection is active. */
+enum class IconScope {
+    /** Keep the New UI icons unless a custom icon override is configured. */
+    DISABLED,
+
+    /** Apply classic replacements for selected icon paths. */
+    ENABLED
+}
 
 /** Persistent application settings for classic icon replacement. */
 @Service(Service.Level.APP)
@@ -11,19 +17,19 @@ enum class IconScope { DISABLED, ENABLED }
 class ClassicIconsSettings : PersistentStateComponent<ClassicIconsSettings.State> {
     /** Serializable settings state stored in `classicIcons.xml`. */
     class State {
-        /** Determines which icon paths the patcher may replace. */
+        /** Determines whether selected icon paths may be replaced. */
         var scope: IconScope = IconScope.ENABLED
 
-        /** Path fragments treated as file/folder icons in the restricted scope. */
+        /** Path fragments included by the Files and folders preset. */
         var extraFilters: String = ""
 
         /** Directory whose relative structure mirrors original icon paths. */
         var customIconsDir: String = ""
 
-        /** Icon paths that are explicitly excluded from replacement. */
+        /** Icon paths explicitly excluded from classic replacement. */
         var excludedIconPaths: MutableList<String> = mutableListOf()
 
-        /** Runtime-discovered paths cached for display across IDE sessions. */
+        /** Runtime-discovered icon paths cached across IDE sessions. */
         var cachedRuntimeIconPaths: MutableList<String> = mutableListOf()
     }
 

@@ -1,9 +1,27 @@
 # Classic Icons (New UI)
 
-JetBrains-Plugin für IntelliJ Platform ab Build 243. Das Plugin verwendet in der New UI
-klassische Icon-Pfade, ohne die gesamte New UI wie ClassicUI abzuschalten.
+Das Plugin ersetzt Icons in der New UI durch die klassischen Icons oder extra hinterlegte Custom Icons.
 
-Einstellungen befinden sich unter **Settings | Appearance & Behavior | Classic Icons**.
+## Einstellungen
+
+Die Einstellungen des Plugins befinden sich unter **Settings | Appearance & Behavior | Classic Icons**.
+
+### Modi
+
+- **Don't use classic icons (New UI)**: Deaktiviert die Classic-Icon-Ersetzung.
+- **Use classic icons**: Die ausgewählten Icon-Pfade werden durch die klassischen Icons ersetzt.
+
+### Presets
+
+- **All icons**: Aktiviert alle aktuell registrierten Icon-Pfade.
+- **Files and folders**: Aktiviert erkannte Datei-/Ordnerpfade sowie registrierte
+  FileType-Icons und zusätzliche Pfadfilter ("**Advanced: additional path filters**").
+
+Presets arbeiten auf dem ungespeicherten Einstellungszustand, durch Vorbelegung der Icon-Auswahl.
+Sie werden erst mit **Apply** gespeichert und können somit weiter angepasst werden.
+
+### Icon-Auswahl
+
 Die Icon-Liste wird aus zwei Quellen aufgebaut:
 
 - **Registered icons**: FileTypeManager und ActionManager liefern bekannte Icons inklusive
@@ -15,32 +33,25 @@ Die Icon-Liste wird aus zwei Quellen aufgebaut:
   Sitzung bekannten ClassLoader geprüft werden. Nicht auflösbare Pfade können im Dialog
   einzeln zur Entfernung ausgewählt werden.
 
+Einzelne Icon-Pfade können von der Ersetzung der neuen mit den klassischen Icons ausgeschlossen werden.
 Die Gruppen sind nach dem ersten Pfadsegment gegliedert und können unabhängig voneinander
-auf- und zugeklappt werden. Gruppen-Checkboxen haben drei Zustände: vollständig aktiv,
-vollständig deaktiviert und teilweise aktiv. Einzelne Icons können ebenfalls ausgeschlossen
-werden. Eine Gruppe mit gleichem Namen in den beiden Quellen wird getrennt behandelt.
+auf- und zugeklappt werden.
+Alle Icons einer Gruppe können auf einmal ausgewählt oder abgewählt werden.
+Registrierte und Runtime-Icons werden getrennt dargestellt und behandelt.
 
-## Modi
-
-- **Don't use classic icons (New UI)**: Der Patcher bleibt deaktiviert.
-- **Classic icons for everything**: Alle bekannten klassischen Pfade werden berücksichtigt.
-- **Use classic icons**: Aktiviert die individuell ausgewählten Icons.
-- **Presets in der Icon-Liste**: **All icons** aktiviert alle bekannten Icons;
-  **Files and folders** aktiviert die erkannten Datei-/Ordnerpfade. Beide Presets
-  ändern nur die Checkboxen im aktuellen Einstellungsdialog und werden erst mit
-  **Apply** gespeichert. Einzelne Icons können danach weiterhin angepasst werden.
+### Custom Icon-Pack
 
 Ein Custom-Icon-Verzeichnis kann die Originalpfade spiegeln, z. B.
 `fileTypes/java.svg` oder `icons/MarkdownPlugin.svg`. SVG- und PNG-Dateien werden unterstützt
-und überschreiben die klassische Vorschau.
+und haben Vorrang vor der Ersetzung mit klassischen Icons.
 
 ## Migrations-Info:
 
-### Upgrade to `1.0.0`:
-Die Einstellungen der Pre-Release-Version `0.1.0` werden wegen der grundlegenden
-Änderungen an der Auswahl nicht vollständig übernommen:
+### Upgrade to `0.2.0`:
+Die Einstellungen der Pre-Release-Version `0.1.0` werden wegen der geänderten
+Auswahllogik nicht vollständig übernommen:
 
-- Die Modi "**Classic icons for everything**" und "**Classic icons only for files
+- Die früheren Modi "**Classic icons for everything**" und "**Classic icons only for files
   and folders**" wurden zu den Presets "**All icons**" und "**Files and folders**".  
   Bitte das jeweilige Preset wählen und Änderungen speichern, um das Verhalten der Modi wiederherzustellen.
 - Icons mit Dateinamen, die auf `File.svg` oder `FileType.svg` enden, werden nicht mehr automatisch zu "**Files and folders**" gezählt.  

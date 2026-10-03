@@ -24,7 +24,7 @@ object IconRegistry {
         data object Runtime : IconMetadata
     }
 
-    /** All known information for one icon path. */
+    /** All known information for one normalised icon path. */
     data class IconRecord(
         val path: String,
         var icon: Icon?,
@@ -34,7 +34,7 @@ object IconRegistry {
     private val iconsByPath = mutableMapOf<String, IconRecord>()
     private val observedClassLoaders = mutableSetOf<ClassLoader>()
 
-    /** Returns the registered file type names using [path], if known. */
+    /** Returns the registered FileType names associated with [path], if known. */
     fun typesFor(path: String): Set<String>? =
         synchronized(iconsByPath) {
             iconsByPath[path]?.metadata
@@ -75,7 +75,7 @@ object IconRegistry {
         }
     }
 
-    /** Restores runtime paths cached by a previous IDE session. */
+    /** Restores runtime paths cached by a previous IDE session without resolving them. */
     fun restoreRuntimePaths(paths: Collection<String>) {
         synchronized(iconsByPath) {
             paths.forEach { path ->
@@ -84,7 +84,7 @@ object IconRegistry {
         }
     }
 
-    /** Resolves missing preview icons for runtime records using the supplied loaders. */
+    /** Resolves missing runtime preview icons using the supplied classloaders. */
     fun resolveRuntimeIcons(classLoaders: Collection<ClassLoader>) {
         val records = synchronized(iconsByPath) {
             iconsByPath.values.filter {

@@ -14,10 +14,22 @@ import javax.swing.table.AbstractTableModel
  */
 class IconTableModel : AbstractTableModel() {
     /** Presets that update the editable checkbox selection. */
-    enum class Preset { ALL, FILES_AND_FOLDERS }
+    enum class Preset {
+        /** Select every currently registered icon path. */
+        ALL,
+
+        /** Select registered FileType and recognised file/folder icon paths. */
+        FILES_AND_FOLDERS
+    }
 
     /** UI grouping source derived from the registry metadata types. */
-    enum class GroupSource { MANAGER, RUNTIME }
+    enum class GroupSource {
+        /** Icon path supplied by FileTypeManager or ActionManager. */
+        MANAGER,
+
+        /** Icon path discovered while IntelliJ resolved an icon. */
+        RUNTIME
+    }
 
     /** Flattened table row representation retained for the legacy model API. */
     class Row(
@@ -60,7 +72,11 @@ class IconTableModel : AbstractTableModel() {
 
     private fun groupKey(source: GroupSource, name: String) = "${source.name}:$name"
 
-    /** Rebuilds groups from the current registry while preserving expansion state. */
+    /**
+     * Rebuilds groups from the current registry while preserving expansion state.
+     *
+     * @param excludedPaths icon paths that should currently remain New UI icons
+     */
     fun load(excludedPaths: Collection<String> = emptyList()) {
         this.excludedPaths = excludedPaths.toSet()
 
@@ -133,7 +149,11 @@ class IconTableModel : AbstractTableModel() {
     private fun isClassic(entry: Entry): Boolean =
         entry.path !in excludedPaths
 
-    /** Applies a preset to the editable checkbox state without persisting it. */
+    /**
+     * Applies a preset to the editable checkbox state without persisting it.
+     *
+     * @param preset selection preset to apply to all currently registered entries
+     */
     fun applyPreset(preset: Preset) {
         when (preset) {
             Preset.ALL -> {
@@ -215,7 +235,7 @@ class IconTableModel : AbstractTableModel() {
     /** Returns whether [entry] is currently enabled for classic replacement. */
     fun entryIsClassic(entry: Entry): Boolean = isClassic(entry)
 
-    /** Changes the exclusion state of one registry entry. */
+    /** Changes the exclusion state of one registry entry in the editable model. */
     fun setEntryClassic(entry: Entry, classic: Boolean) {
         if (classic) {
             excludedPaths -= entry.path
