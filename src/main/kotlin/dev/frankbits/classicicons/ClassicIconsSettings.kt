@@ -35,7 +35,12 @@ class ClassicIconsSettings : PersistentStateComponent<ClassicIconsSettings.State
     override fun getState(): State = state
 
     /** Replaces the in-memory settings with the persisted state. */
-    override fun loadState(state: State) { this.state = state }
+    override fun loadState(state: State) {
+        if (state.scope == IconScope.FILES_AND_FOLDERS) {
+            state.scope = IconScope.ALL
+        }
+        this.state = state
+    }
 
     companion object {
         /** Returns the application-level settings service. */

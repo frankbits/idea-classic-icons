@@ -24,8 +24,11 @@ werden. Eine Gruppe mit gleichem Namen in den beiden Quellen wird getrennt behan
 
 - **Don't use classic icons (New UI)**: Der Patcher bleibt deaktiviert.
 - **Classic icons for everything**: Alle bekannten klassischen Pfade werden berücksichtigt.
-- **Classic icons only for files and folders**: Nur Datei-/Ordnerpfade, registrierte
-  FileTypes und zusätzliche Pfadfilter werden berücksichtigt.
+- **Use classic icons**: Aktiviert die individuell ausgewählten Icons.
+- **Presets in der Icon-Liste**: **All icons** aktiviert alle bekannten Icons;
+  **Files and folders** aktiviert die erkannten Datei-/Ordnerpfade. Beide Presets
+  ändern nur die Checkboxen im aktuellen Einstellungsdialog und werden erst mit
+  **Apply** gespeichert. Einzelne Icons können danach weiterhin angepasst werden.
 
 Ein Custom-Icon-Verzeichnis kann die Originalpfade spiegeln, z. B.
 `fileTypes/java.svg` oder `icons/MarkdownPlugin.svg`. SVG- und PNG-Dateien werden unterstützt

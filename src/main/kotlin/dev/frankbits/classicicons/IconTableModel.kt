@@ -13,6 +13,9 @@ import javax.swing.table.AbstractTableModel
  * persistence is handled by [ClassicIconsConfigurable].
  */
 class IconTableModel : AbstractTableModel() {
+    /** Presets that update the editable checkbox selection. */
+    enum class Preset { ALL, FILES_AND_FOLDERS }
+
     /** UI grouping source derived from the registry metadata types. */
     enum class GroupSource { MANAGER, RUNTIME }
 
@@ -131,8 +134,34 @@ class IconTableModel : AbstractTableModel() {
     }
 
     private fun isClassic(entry: Entry): Boolean =
-        if (entry.fileTypes.isEmpty()) entry.path !in excludedPaths
-        else entry.fileTypes.any { it.typeName !in excludedFileTypes }
+        entry.path !in excludedPaths &&
+            (entry.fileTypes.isEmpty() || entry.fileTypes.any { it.typeName !in excludedFileTypes })
+
+    /** Applies a preset to the editable checkbox state without persisting it. */
+    fun applyPreset(preset: Preset) {
+        when (preset) {
+            Preset.ALL -> {
+                excludedFileTypes = emptySet()
+                excludedPaths = emptySet()
+            }
+            Preset.FILES_AND_FOLDERS -> {
+                excludedFileTypes = emptySet()
+                excludedPaths = groups
+                    .flatMap { it.entries }
+                    .filter { entry ->
+                        entry.fileTypes.isEmpty() &&
+                            !ClassicIconPatcher.isFileOrFolderIcon(
+                                entry.path,
+                                ClassicIconsSettings.getInstance().state
+                            )
+                    }
+                    .map { it.path }
+                    .toSet()
+            }
+        }
+        rebuildRows()
+        fireTableDataChanged()
+    }
 
     /** Returns detached group snapshots for rendering the settings page. */
     fun groupsSnapshot(): List<Group> = groups.map { group ->
@@ -197,10 +226,9 @@ class IconTableModel : AbstractTableModel() {
         if (classic) {
             excludedPaths -= entry.path
             excludedFileTypes -= entry.fileTypes.map { it.typeName }.toSet()
-        } else if (entry.fileTypes.isEmpty()) {
-            excludedPaths += entry.path
         } else {
-            excludedFileTypes += entry.fileTypes.map { it.typeName }.toSet()
+            excludedPaths += entry.path
+            excludedFileTypes -= entry.fileTypes.map { it.typeName }.toSet()
         }
         rebuildRows()
         fireTableDataChanged()
@@ -246,9 +274,7 @@ class IconTableModel : AbstractTableModel() {
 
     /** Returns excluded non-FileType paths for persistence. */
     fun excludedPaths(): Set<String> =
-        groups.flatMap { it.entries.filter { entry ->
-            entry.fileTypes.isEmpty() && !isClassic(entry)
-        }.map { it.path } }.toSet()
+        groups.flatMap { it.entries.filter { !isClassic(it) }.map { it.path } }.toSet()
 
     /** Returns the flattened row count for the legacy table representation. */
     override fun getRowCount() = rows.size

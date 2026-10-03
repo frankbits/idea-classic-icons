@@ -26,6 +26,7 @@ import javax.swing.SwingConstants
 import javax.swing.event.DocumentEvent
 import javax.swing.table.DefaultTableCellRenderer
 import javax.swing.JPanel
+import javax.swing.JButton
 
 /** Table model for the entries displayed inside one source-specific group. */
 private class GroupTableModel(
@@ -312,11 +313,26 @@ class ClassicIconsConfigurable : BoundConfigurable("Classic Icons") {
         return panel {
             buttonsGroup("Icons:") {
                 row { radioButton("Don't use classic icons (New UI)", IconScope.DISABLED) }
-                row { radioButton("Classic icons for everything", IconScope.ALL) }
-                row { radioButton("Classic icons only for files and folders", IconScope.FILES_AND_FOLDERS) }
+                row { radioButton("Use classic icons", IconScope.ALL) }
             }.bind(settings::scope)
 
-            group("File types (mode \"files and folders\")") {
+            group("Icon selection") {
+                row("Presets:") {
+                    cell(JPanel(java.awt.FlowLayout(java.awt.FlowLayout.LEFT, 4, 0)).apply {
+                        add(JButton("All icons").apply {
+                            addActionListener {
+                                tableModel.applyPreset(IconTableModel.Preset.ALL)
+                                rebuildGroups()
+                            }
+                        })
+                        add(JButton("Files and folders").apply {
+                            addActionListener {
+                                tableModel.applyPreset(IconTableModel.Preset.FILES_AND_FOLDERS)
+                                rebuildGroups()
+                            }
+                        })
+                    })
+                }
                 row("Filter:") { cell(filterField).align(AlignX.FILL) }
                 row { cell(groupsPanel).align(Align.FILL) }
                 row {
@@ -330,7 +346,7 @@ class ClassicIconsConfigurable : BoundConfigurable("Classic Icons") {
                         .rows(4)
                         .align(AlignX.FILL)
                         .bindText(settings::extraFilters)
-                        .comment("One path fragment per line (e.g. MarkdownPlugin). Only used in \"Only files and folders\" mode.")
+                        .comment("One path fragment per line (e.g. MarkdownPlugin). Used by the Files and folders preset.")
                 }
             }
 
