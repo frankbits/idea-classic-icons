@@ -43,8 +43,8 @@ Benötigt JDK 21.
 ```text
 src/main/kotlin/dev/frankbits/classicicons/
 ├── ClassicIconPatcher.kt       # IconPathPatcher und Cache-Refresh
-├── FileTypeIcons.kt            # zentrale Registry und Manager-Erkennung
-├── FileTypeTableModel.kt       # Gruppen und Ausschlusszustand
+├── IconRegistry.kt             # zentrale Registry und Manager-Erkennung
+├── IconTableModel.kt           # Gruppen und Ausschlusszustand
 ├── ClassicIconsConfigurable.kt # Settings-UI
 ├── ClassicIconsSettings.kt     # persistente Einstellungen
 └── ClassicIconsStartup.kt      # initiales Registry-Refresh

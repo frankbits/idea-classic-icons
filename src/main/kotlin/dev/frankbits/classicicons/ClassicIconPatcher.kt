@@ -37,12 +37,12 @@ object ClassicIconPatcher : IconPathPatcher() {
         val resource = classLoader.getResource(path.removePrefix("/")) ?: return null
         loadingPreview.set(true)
         try {
-            IconLoader.findIcon(resource)?.let { FileTypeIcons.recordPath(path, it) }
-                ?: FileTypeIcons.recordPath(path)
+            IconLoader.findIcon(resource)?.let { IconRegistry.recordPath(path, it) }
+                ?: IconRegistry.recordPath(path)
         } finally {
             loadingPreview.set(false)
         }
-        FileTypeIcons.typesFor(path)?.let { types ->
+        IconRegistry.typesFor(path)?.let { types ->
             if (types.isNotEmpty() && types.all { it in state.excludedFileTypes }) return null
         }
 
@@ -73,7 +73,7 @@ object ClassicIconPatcher : IconPathPatcher() {
     /** Checks whether [path] belongs to the restricted files-and-folders scope. */
     private fun isFileOrFolderIcon(path: String, state: ClassicIconsSettings.State): Boolean {
         // First: if ALL file types using this icon path are excluded, don't use classic icon
-        FileTypeIcons.typesFor(path)?.let { types ->
+        IconRegistry.typesFor(path)?.let { types ->
             if (types.all { it in state.excludedFileTypes }) return false
         }
 
@@ -82,7 +82,7 @@ object ClassicIconPatcher : IconPathPatcher() {
         if (path.endsWith("File.svg") || path.endsWith("FileType.svg")) return true
 
         // Check if any non-excluded file type uses this path
-        FileTypeIcons.typesFor(path)?.let { types ->
+        IconRegistry.typesFor(path)?.let { types ->
             if (types.any { it !in state.excludedFileTypes }) return true
         }
 

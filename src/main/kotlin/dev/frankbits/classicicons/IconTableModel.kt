@@ -11,7 +11,7 @@ import javax.swing.table.AbstractTableModel
  * The settings UI uses this model as the single mutable view of checkbox state;
  * persistence is handled by [ClassicIconsConfigurable].
  */
-class FileTypeTableModel : AbstractTableModel() {
+class IconTableModel : AbstractTableModel() {
     /** Flattened table row representation retained for the legacy model API. */
     class Row(
         val path: String,
@@ -31,15 +31,15 @@ class FileTypeTableModel : AbstractTableModel() {
     class Entry(
         val path: String,
         val icon: Icon?,
-        val fileTypes: List<FileTypeIcons.FileTypeMetadata>,
-        val source: FileTypeIcons.Source
+        val fileTypes: List<IconRegistry.FileTypeMetadata>,
+        val source: IconRegistry.Source
     )
 
     /** Group of entries sharing a source and first icon-path segment. */
     class Group(
         val name: String,
         val entries: List<Entry>,
-        val source: FileTypeIcons.Source,
+        val source: IconRegistry.Source,
         var expanded: Boolean = false
     )
 
@@ -50,18 +50,18 @@ class FileTypeTableModel : AbstractTableModel() {
     private var excludedPaths: Set<String> = emptySet()
     private val expandedGroups = mutableSetOf<String>()
 
-    private fun groupKey(source: FileTypeIcons.Source, name: String) = "${source.name}:$name"
+    private fun groupKey(source: IconRegistry.Source, name: String) = "${source.name}:$name"
 
     /** Rebuilds groups from the current registry while preserving expansion state. */
     fun load(excluded: Collection<String>, excludedPaths: Collection<String> = emptyList()) {
         excludedFileTypes = excluded.toSet()
         this.excludedPaths = excludedPaths.toSet()
 
-        val byPath = FileTypeIcons.iconRecords().associate { record ->
-            val source = if (FileTypeIcons.Source.MANAGER in record.sources) {
-                FileTypeIcons.Source.MANAGER
+        val byPath = IconRegistry.iconRecords().associate { record ->
+            val source = if (IconRegistry.Source.MANAGER in record.sources) {
+                IconRegistry.Source.MANAGER
             } else {
-                FileTypeIcons.Source.RUNTIME
+                IconRegistry.Source.RUNTIME
             }
             record.path to Entry(record.path, record.icon, record.fileTypes.toList(), source)
         }

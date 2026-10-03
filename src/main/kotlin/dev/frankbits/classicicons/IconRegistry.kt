@@ -11,7 +11,7 @@ import javax.swing.Icon
  * A path is stored only once. Its record can contain several sources and
  * metadata entries because the same icon may be used by multiple managers.
  */
-object FileTypeIcons {
+object IconRegistry {
     /** Origin used to classify records in the settings UI. */
     enum class Source { MANAGER, RUNTIME }
 

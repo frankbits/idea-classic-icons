@@ -23,10 +23,10 @@ import javax.swing.table.DefaultTableCellRenderer
 
 /** Table model for the entries displayed inside one source-specific group. */
 private class GroupTableModel(
-    private val entries: List<FileTypeTableModel.Entry>,
+    private val entries: List<IconTableModel.Entry>,
     private val hasFileTypes: Boolean,
     private val groupName: String,
-    private val model: FileTypeTableModel,
+    private val model: IconTableModel,
     private val changed: () -> Unit
 ) : javax.swing.table.AbstractTableModel() {
     /** Returns the number of icon records in this group. */
@@ -121,8 +121,8 @@ class ClassicIconsConfigurable : BoundConfigurable("Classic Icons") {
     private val settings get() = ClassicIconsSettings.getInstance().state
 
     private val tableModel by lazy {
-        FileTypeIcons.refresh()
-        FileTypeTableModel().also {
+        IconRegistry.refresh()
+        IconTableModel().also {
             it.load(settings.excludedFileTypes, settings.excludedIconPaths)
             it.setCustomIconsDir(settings.customIconsDir)
         }
@@ -137,15 +137,15 @@ class ClassicIconsConfigurable : BoundConfigurable("Classic Icons") {
         fun rebuildGroups() {
             groupsPanel.removeAll()
             val query = filterField.text.trim().lowercase()
-            var displayedSource: FileTypeIcons.Source? = null
+            var displayedSource: IconRegistry.Source? = null
 
             tableModel.groupsSnapshot().forEach { group ->
                 if (displayedSource != group.source) {
                     displayedSource = group.source
                     groupsPanel.add(JLabel(
                         when (group.source) {
-                            FileTypeIcons.Source.MANAGER -> "Registered icons"
-                            FileTypeIcons.Source.RUNTIME ->
+                            IconRegistry.Source.MANAGER -> "Registered icons"
+                            IconRegistry.Source.RUNTIME ->
                                 "Runtime-discovered icons (list may be incomplete)"
                         }
                     ).apply {
@@ -305,7 +305,7 @@ class ClassicIconsConfigurable : BoundConfigurable("Classic Icons") {
         settings.excludedIconPaths = tableModel.excludedPaths().toMutableList()
         tableModel.setCustomIconsDir(settings.customIconsDir)
         ClassicIconPatcher.refreshUi()
-        FileTypeIcons.refresh()
+        IconRegistry.refresh()
         tableModel.load(settings.excludedFileTypes, settings.excludedIconPaths)
         tableModel.setCustomIconsDir(settings.customIconsDir)
     }
