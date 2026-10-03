@@ -25,6 +25,9 @@ class ClassicIconsSettings : PersistentStateComponent<ClassicIconsSettings.State
 
         /** Icon paths that are explicitly excluded from replacement. */
         var excludedIconPaths: MutableList<String> = mutableListOf()
+
+        /** Runtime-discovered paths cached for display across IDE sessions. */
+        var cachedRuntimeIconPaths: MutableList<String> = mutableListOf()
     }
 
     private var state = State()

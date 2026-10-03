@@ -121,6 +121,7 @@ class ClassicIconsConfigurable : BoundConfigurable("Classic Icons") {
     private val settings get() = ClassicIconsSettings.getInstance().state
 
     private val tableModel by lazy {
+        IconRegistry.restoreRuntimePaths(settings.cachedRuntimeIconPaths)
         IconRegistry.refresh()
         IconTableModel().also {
             it.load(settings.excludedFileTypes, settings.excludedIconPaths)

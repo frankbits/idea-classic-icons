@@ -42,6 +42,10 @@ object ClassicIconPatcher : IconPathPatcher() {
         } finally {
             loadingPreview.set(false)
         }
+        val cachedPaths = state.cachedRuntimeIconPaths
+        if (path !in cachedPaths) {
+            cachedPaths.add(path)
+        }
         IconRegistry.typesFor(path)?.let { types ->
             if (types.isNotEmpty() && types.all { it in state.excludedFileTypes }) return null
         }

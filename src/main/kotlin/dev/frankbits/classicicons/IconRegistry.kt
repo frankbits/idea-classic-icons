@@ -64,6 +64,15 @@ object IconRegistry {
     fun recordPath(path: String, icon: Icon) =
         updateRecord(path, icon, IconMetadata.Runtime)
 
+    /** Restores runtime paths cached by a previous IDE session. */
+    fun restoreRuntimePaths(paths: Collection<String>) {
+        synchronized(iconsByPath) {
+            paths.forEach { path ->
+                record(path).metadata += IconMetadata.Runtime
+            }
+        }
+    }
+
     /** Adds FileTypeManager metadata to the record for [path]. */
     fun recordFileType(path: String, icon: Icon, typeName: String, extension: String) =
         updateRecord(path, icon, IconMetadata.FileType(typeName, extension))

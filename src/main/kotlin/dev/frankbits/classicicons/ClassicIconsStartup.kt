@@ -7,6 +7,7 @@ import com.intellij.openapi.startup.ProjectActivity
 class ClassicIconsStartup : ProjectActivity {
     /** Refreshes manager records after the project has finished starting. */
     override suspend fun execute(project: Project) {
+        IconRegistry.restoreRuntimePaths(ClassicIconsSettings.getInstance().state.cachedRuntimeIconPaths)
         if (IconRegistry.refresh()) ClassicIconPatcher.refreshUi()
     }
 }

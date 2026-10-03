@@ -8,8 +8,9 @@ Die Icon-Liste wird aus zwei Quellen aufgebaut:
 
 - **Registered icons**: FileTypeManager und ActionManager liefern bekannte Icons inklusive
   FileType-/Action-Metadaten.
-- **Runtime-discovered icons**: weitere Pfade werden erst registriert, wenn IntelliJ sie
-  tatsächlich anfordert. Diese Liste kann daher unvollständig sein.
+- **Runtime-discovered icons**: weitere Pfade werden registriert, wenn IntelliJ sie
+  tatsächlich anfordert. Die gefundenen Pfade werden für spätere IDE-Sitzungen gespeichert;
+  die Liste kann trotzdem unvollständig sein und zwischendurch veraltete Einträge enthalten.
 
 Die Gruppen sind nach dem ersten Pfadsegment gegliedert und können unabhängig voneinander
 auf- und zugeklappt werden. Gruppen-Checkboxen haben drei Zustände: vollständig aktiv,
