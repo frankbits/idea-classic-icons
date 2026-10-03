@@ -2,6 +2,7 @@ package dev.frankbits.classicicons
 
 import com.intellij.openapi.actionSystem.ActionManager
 import com.intellij.openapi.fileTypes.FileTypeManager
+import com.intellij.openapi.util.IconLoader
 import com.intellij.ui.icons.IconPathProvider
 import javax.swing.Icon
 
@@ -81,6 +82,24 @@ object IconRegistry {
             paths.forEach { path ->
                 record(path).metadata += IconMetadata.Runtime
             }
+        }
+    }
+
+    /** Resolves missing preview icons for runtime records using the supplied loaders. */
+    fun resolveRuntimeIcons(classLoaders: Collection<ClassLoader>) {
+        val records = synchronized(iconsByPath) {
+            iconsByPath.values.filter {
+                it.icon == null && it.metadata.contains(IconMetadata.Runtime)
+            }.toList()
+        }
+        records.forEach { record ->
+            classLoaders.asSequence()
+                .mapNotNull { loader ->
+                    val resource = loader.getResource(record.path.removePrefix("/"))
+                    resource?.let { IconLoader.findIcon(it) }
+                }
+                .firstOrNull()
+                ?.let { recordPath(record.path, it) }
         }
     }
 

@@ -128,10 +128,20 @@ class ClassicIconsConfigurable : BoundConfigurable("Classic Icons") {
     private val tableModel by lazy {
         IconRegistry.restoreRuntimePaths(settings.cachedRuntimeIconPaths)
         IconRegistry.refresh()
+        IconRegistry.resolveRuntimeIcons(previewClassLoaders())
         IconTableModel().also {
             it.load(settings.excludedFileTypes, settings.excludedIconPaths)
             it.setCustomIconsDir(settings.customIconsDir)
         }
+    }
+
+    private fun previewClassLoaders(): Set<ClassLoader> = mutableSetOf<ClassLoader>().apply {
+        add(ClassLoader.getSystemClassLoader())
+        Thread.currentThread().contextClassLoader?.let { add(it) }
+        addAll(IconRegistry.observedClassLoaders())
+        addAll(PluginManagerCore.loadedPlugins.mapNotNull {
+            (it as? IdeaPluginDescriptorImpl)?.pluginClassLoader
+        })
     }
 
     /** Builds the settings form and its source-separated icon groups. */
@@ -341,14 +351,7 @@ class ClassicIconsConfigurable : BoundConfigurable("Classic Icons") {
 
     /** Validates cached runtime paths and opens the selective cleanup dialog. */
     private fun validateCachedRuntimePaths(onRemoved: (List<String>) -> Unit) {
-        val classLoaders = mutableSetOf<ClassLoader>().apply {
-            add(ClassLoader.getSystemClassLoader())
-            Thread.currentThread().contextClassLoader?.let { add(it) }
-            addAll(IconRegistry.observedClassLoaders())
-            addAll(PluginManagerCore.loadedPlugins.mapNotNull {
-                (it as? IdeaPluginDescriptorImpl)?.pluginClassLoader
-            })
-        }
+        val classLoaders = previewClassLoaders()
         val unresolved = IconRegistry.unresolvedRuntimePaths(classLoaders)
         if (unresolved.isEmpty()) {
             Messages.showInfoMessage(
