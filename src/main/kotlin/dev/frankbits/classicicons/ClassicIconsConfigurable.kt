@@ -149,17 +149,43 @@ class ClassicIconsConfigurable : BoundConfigurable("Classic Icons") {
             tableModel.groupsSnapshot().forEach { group ->
                 if (displayedSource != group.source) {
                     displayedSource = group.source
-                    groupsPanel.add(JLabel(
+                    val sourceHeader = JPanel(java.awt.BorderLayout()).apply {
+                        alignmentX = javax.swing.JPanel.LEFT_ALIGNMENT
+                        border = JBUI.Borders.empty(8, 0, 4, 0)
+                    }
+                    sourceHeader.add(JLabel(
                         when (group.source) {
                             IconTableModel.GroupSource.MANAGER -> "Registered icons"
                             IconTableModel.GroupSource.RUNTIME ->
                                 "Runtime-discovered icons (list may be incomplete)"
                         }
                     ).apply {
-                        alignmentX = javax.swing.JPanel.LEFT_ALIGNMENT
                         font = font.deriveFont(java.awt.Font.BOLD)
-                        border = JBUI.Borders.empty(8, 0, 4, 0)
-                    })
+                    }, java.awt.BorderLayout.CENTER)
+                    if (group.source == IconTableModel.GroupSource.RUNTIME) {
+                        sourceHeader.add(
+                            javax.swing.JButton("Validate cached runtime paths").apply {
+                                toolTipText =
+                                    "Checks cached runtime paths against the platform and loaded plugin classloaders."
+                                addActionListener {
+                                    validateCachedRuntimePaths { removed ->
+                                        if (removed.isNotEmpty()) {
+                                            settings.cachedRuntimeIconPaths.removeAll(removed.toSet())
+                                            IconRegistry.removeRuntimePaths(removed)
+                                            tableModel.load(
+                                                settings.excludedFileTypes,
+                                                settings.excludedIconPaths
+                                            )
+                                            tableModel.setCustomIconsDir(settings.customIconsDir)
+                                            rebuildGroups()
+                                        }
+                                    }
+                                }
+                            },
+                            java.awt.BorderLayout.EAST
+                        )
+                    }
+                    groupsPanel.add(sourceHeader)
                 }
 
                 val matching = group.entries.filter { entry ->
@@ -278,22 +304,6 @@ class ClassicIconsConfigurable : BoundConfigurable("Classic Icons") {
                         .align(AlignX.FILL)
                         .bindText(settings::extraFilters)
                         .comment("One path fragment per line (e.g. MarkdownPlugin). Only used in \"Only files and folders\" mode.")
-                }
-            }
-
-            group("Runtime-discovered icon cache") {
-                row {
-                    button("Validate cached runtime paths") {
-                        validateCachedRuntimePaths { removed ->
-                            if (removed.isNotEmpty()) {
-                                settings.cachedRuntimeIconPaths.removeAll(removed.toSet())
-                                IconRegistry.removeRuntimePaths(removed)
-                                tableModel.load(settings.excludedFileTypes, settings.excludedIconPaths)
-                                tableModel.setCustomIconsDir(settings.customIconsDir)
-                                rebuildGroups()
-                            }
-                        }
-                    }.comment("Checks cached runtime paths against the platform and loaded plugin classloaders.")
                 }
             }
 
