@@ -6,6 +6,7 @@ import com.intellij.openapi.ui.DialogPanel
 import com.intellij.openapi.ui.DialogWrapper
 import com.intellij.openapi.ui.Messages
 import com.intellij.openapi.ui.TextFieldWithBrowseButton
+import com.intellij.openapi.ui.TextBrowseFolderListener
 import com.intellij.openapi.util.IconLoader
 import com.intellij.ide.plugins.IdeaPluginDescriptorImpl
 import com.intellij.ide.plugins.PluginManagerCore
@@ -311,8 +312,10 @@ class ClassicIconsConfigurable : BoundConfigurable("Classic Icons") {
 
         return panel {
             buttonsGroup("Icons:") {
-                row { radioButton("Don't use classic icons (New UI)", IconScope.DISABLED) }
-                row { radioButton("Use classic icons", IconScope.ENABLED) }
+                row { radioButton("Disable icon replacement", IconScope.DISABLED) }
+                row { radioButton("Custom icons only", IconScope.CUSTOM_ONLY) }
+                row { radioButton("Classic icons only", IconScope.CLASSIC_ONLY) }
+                row { radioButton("Custom & Classic icons", IconScope.ENABLED) }
             }.bind(settings::scope)
 
             group("Icon selection") {
@@ -352,7 +355,9 @@ class ClassicIconsConfigurable : BoundConfigurable("Classic Icons") {
             group("Custom icon pack") {
                 row("Folder:") {
                     val field = TextFieldWithBrowseButton()
-                    field.addBrowseFolderListener(null, FileChooserDescriptorFactory.createSingleFolderDescriptor())
+                    field.addBrowseFolderListener(
+                        TextBrowseFolderListener(FileChooserDescriptorFactory.createSingleFolderDescriptor())
+                    )
                     field.textField.document.addDocumentListener(object : DocumentAdapter() {
                         override fun textChanged(e: DocumentEvent) {
                             IconLoader.clearCache()

@@ -9,8 +9,13 @@ Die Einstellungen des Plugins befinden sich unter **Settings | Appearance & Beha
 
 ### Modi
 
-- **Don't use classic icons (New UI)**: Deaktiviert die Classic-Icon-Ersetzung.
-- **Use classic icons**: Die ausgewählten Icon-Pfade werden durch die klassischen Icons ersetzt.
+- **Disable icon replacement**: Deaktiviert jede Ersetzung, einschließlich
+  Custom-Icons.
+- **Custom icons only**: Verwendet ausschließlich vorhandene Custom-Icon-Overrides.
+- **Classic icons only**: Verwendet nur die ausgewählten klassischen Icon-Pfade und
+  ignoriert Custom-Icon-Overrides.
+- **Custom & Classic icons**: Verwendet Custom-Icons, sofern vorhanden, und ersetzt
+  ansonsten die ausgewählten Pfade durch klassische Icons.
 
 ### Presets
 
@@ -49,21 +54,23 @@ und haben Vorrang vor der Ersetzung mit klassischen Icons.
 ## Migrations-Info:
 
 ### Upgrade to `0.2.0`:
+
 Die Einstellungen der Pre-Release-Version `0.1.0` werden wegen der geänderten
 Auswahllogik nicht vollständig übernommen:
 
-- Die früheren Modi "**Classic icons for everything**" und "**Classic icons only for files
-  and folders**" wurden zu den Presets "**All icons**" und "**Files and folders**".  
-  Bitte das jeweilige Preset wählen und Änderungen speichern, um das Verhalten der Modi wiederherzustellen.
-- Icons mit Dateinamen, die auf `File.svg` oder `FileType.svg` enden, werden nicht mehr automatisch zu "**Files and folders**" gezählt.  
-  Falls diese Icons in der neuen Version verwendet werden sollen, muss die Auswahl der FileType-Icons gegebenenfalls angepasst werden.
+- **Classic icons for everything** wird durch den Modus **Custom & Classic icons**
+  mit dem Preset **All icons** ersetzt.
+- **Classic icons only for files and folders** wird durch den Modus
+  **Custom & Classic icons** mit dem Preset **Files and folders** ersetzt.
+- **Don't use classic icons (New UI)** wird durch den Modus **Custom icons only** ersetzt.
+- **Don't use classic icons (New UI)** entspricht dem Modus **Disable icon replacement**.
+  Wenn also Custom Icons ersetzt werden sollen, muss zum Modus **Custom icons only** gewechselt werden.
 - Einschränkung der zu ersetzenden FileType-Icons werden nicht migriert.
   Die Icon-Auswahl muss gegebenenfalls neu gesetzt werden.
 
 
 - "**Advanced: additional path filters**" wird weiterhin vom Preset "**Files and folders**" berücksichtigt.
 - "**Custom icon pack**" bleibt erhalten.
-- Wenn **Classic Icons** deaktiviert waren, bleiben sie weiterhin deaktiviert.
 
 ## Bauen
 

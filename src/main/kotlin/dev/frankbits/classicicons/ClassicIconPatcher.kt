@@ -42,7 +42,11 @@ object ClassicIconPatcher : IconPathPatcher() {
         if (normalizedPath.contains("expui/")) return null
         val state = ClassicIconsSettings.getInstance().state
 
-        customIcon(normalizedPath, state.customIconsDir)?.let { return it }
+        if (state.scope == IconScope.DISABLED) return null
+        if (state.scope != IconScope.CLASSIC_ONLY) {
+            customIcon(normalizedPath, state.customIconsDir)?.let { return it }
+        }
+        if (state.scope == IconScope.CUSTOM_ONLY) return null
         if (normalizedPath in state.excludedIconPaths) return null
         if (classLoader == null) return null
 
@@ -56,8 +60,6 @@ object ClassicIconPatcher : IconPathPatcher() {
         if (normalizedPath !in cachedPaths) {
             cachedPaths.add(normalizedPath)
         }
-        if (state.scope == IconScope.DISABLED) return null
-
         // Nur eingreifen, wenn das klassische Icon wirklich existiert
         return path
     }

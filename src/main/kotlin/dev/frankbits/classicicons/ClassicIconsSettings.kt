@@ -4,8 +4,14 @@ import com.intellij.openapi.components.*
 
 /** Defines whether the path-based icon selection is active. */
 enum class IconScope {
-    /** Keep the New UI icons unless a custom icon override is configured. */
+    /** Keep all New UI icons, also ignoring custom icon overrides. */
     DISABLED,
+
+    /** Use only custom icon overrides and never replace icons with classic paths. */
+    CUSTOM_ONLY,
+
+    /** Apply classic replacements while ignoring custom icon overrides. */
+    CLASSIC_ONLY,
 
     /** Apply classic replacements for selected icon paths. */
     ENABLED
