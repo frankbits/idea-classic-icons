@@ -82,7 +82,7 @@ object ClassicIconPatcher : IconPathPatcher() {
     private fun isFileOrFolderIcon(path: String, state: ClassicIconsSettings.State): Boolean {
         // First: if ALL file types using this icon path are excluded, don't use classic icon
         IconRegistry.typesFor(path)?.let { types ->
-            if (types.all { it in state.excludedFileTypes }) return false
+            if (types.isNotEmpty() && types.all { it in state.excludedFileTypes }) return false
         }
 
         // Then check path patterns
