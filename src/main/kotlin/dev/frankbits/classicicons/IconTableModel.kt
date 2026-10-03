@@ -1,6 +1,7 @@
 package dev.frankbits.classicicons
 
 import java.io.File
+import com.intellij.openapi.util.IconLoader
 import com.intellij.util.ui.EmptyIcon
 import javax.swing.Icon
 import javax.swing.table.AbstractTableModel
@@ -51,6 +52,7 @@ class IconTableModel : AbstractTableModel() {
     private var customIconsDir: String = ""
     private var excludedFileTypes: Set<String> = emptySet()
     private var excludedPaths: Set<String> = emptySet()
+    private val customIconStates = mutableMapOf<String, Boolean>()
     private val expandedGroups = mutableSetOf<String>()
     private val filterExpandedGroups = mutableSetOf<String>()
 
@@ -212,7 +214,16 @@ class IconTableModel : AbstractTableModel() {
     /** Updates the directory used to mark custom overrides in the preview. */
     fun setCustomIconsDir(dir: String) {
         customIconsDir = dir
+        customIconStates.clear()
         fireTableDataChanged()
+    }
+
+    /** Invalidates cached icons when a custom file is added or removed. */
+    fun refreshCustomIconCache(path: String) {
+        val current = hasCustomIcon(path)
+        if (customIconStates.put(path, current) != current) {
+            IconLoader.clearCache()
+        }
     }
 
     /** Returns whether a custom SVG/PNG override exists for [path]. */

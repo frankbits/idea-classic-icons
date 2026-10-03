@@ -6,6 +6,7 @@ import com.intellij.openapi.ui.DialogPanel
 import com.intellij.openapi.ui.DialogWrapper
 import com.intellij.openapi.ui.Messages
 import com.intellij.openapi.ui.TextFieldWithBrowseButton
+import com.intellij.openapi.util.IconLoader
 import com.intellij.ide.plugins.IdeaPluginDescriptorImpl
 import com.intellij.ide.plugins.PluginManagerCore
 import com.intellij.ui.DocumentAdapter
@@ -61,7 +62,10 @@ private class GroupTableModel(
         val path = entry.path.removePrefix("/$groupName/")
         return when (column) {
             0 -> model.entryIsClassic(entry)
-            1 -> entry.icon ?: javax.swing.ImageIcon()
+            1 -> {
+                model.refreshCustomIconCache(entry.path)
+                entry.icon ?: javax.swing.ImageIcon()
+            }
             2 -> path
             3 -> if (hasFileTypes) entry.fileTypes.joinToString(", ") { it.typeName } else ""
             4 -> if (hasFileTypes) entry.fileTypes.map { it.extension }
@@ -334,6 +338,13 @@ class ClassicIconsConfigurable : BoundConfigurable("Classic Icons") {
                 row("Folder:") {
                     val field = TextFieldWithBrowseButton()
                     field.addBrowseFolderListener(null, FileChooserDescriptorFactory.createSingleFolderDescriptor())
+                    field.textField.document.addDocumentListener(object : DocumentAdapter() {
+                        override fun textChanged(e: DocumentEvent) {
+                            IconLoader.clearCache()
+                            tableModel.setCustomIconsDir(field.text)
+                            rebuildGroups()
+                        }
+                    })
                     cell(field).align(AlignX.FILL).bindText(settings::customIconsDir)
                 }
                 row {
