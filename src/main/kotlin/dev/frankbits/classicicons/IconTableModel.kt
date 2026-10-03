@@ -173,6 +173,20 @@ class IconTableModel : AbstractTableModel() {
         if (expanded) expandedGroups.add(key) else expandedGroups.remove(key)
     }
 
+    /** Expands or collapses every group belonging to [source]. */
+    fun setSourceExpanded(source: GroupSource, expanded: Boolean) {
+        groups.filter { it.source == source }.forEach { group ->
+            val key = groupKey(group.source, group.name)
+            group.expanded = expanded
+            if (expanded) {
+                expandedGroups.add(key)
+            } else {
+                expandedGroups.remove(key)
+            }
+            filterExpandedGroups.remove(key)
+        }
+    }
+
     /** Returns whether [entry] is currently enabled for classic replacement. */
     fun entryIsClassic(entry: Entry): Boolean = isClassic(entry)
 

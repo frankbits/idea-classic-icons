@@ -162,9 +162,12 @@ class ClassicIconsConfigurable : BoundConfigurable("Classic Icons") {
                     ).apply {
                         font = font.deriveFont(java.awt.Font.BOLD)
                     }, java.awt.BorderLayout.CENTER)
+                    val sourceGroups = tableModel.groupsSnapshot()
+                        .filter { it.source == group.source }
+                    val allExpanded = sourceGroups.all { it.expanded                     }
+                    val sourceActions = JPanel(java.awt.FlowLayout(java.awt.FlowLayout.RIGHT, 4, 0))
                     if (group.source == IconTableModel.GroupSource.RUNTIME) {
-                        sourceHeader.add(
-                            javax.swing.JButton("Validate cached runtime paths").apply {
+                        sourceActions.add(javax.swing.JButton("Validate cached runtime paths").apply {
                                 toolTipText =
                                     "Checks cached runtime paths against the platform and loaded plugin classloaders."
                                 addActionListener {
@@ -181,10 +184,17 @@ class ClassicIconsConfigurable : BoundConfigurable("Classic Icons") {
                                         }
                                     }
                                 }
-                            },
-                            java.awt.BorderLayout.EAST
-                        )
+                            })
                     }
+                    sourceActions.add(
+                        javax.swing.JButton(if (allExpanded) "Collapse all" else "Expand all").apply {
+                            addActionListener {
+                                tableModel.setSourceExpanded(group.source, !allExpanded)
+                                rebuildGroups()
+                            }
+                        }
+                    )
+                    sourceHeader.add(sourceActions, java.awt.BorderLayout.EAST)
                     groupsPanel.add(sourceHeader)
                 }
 
