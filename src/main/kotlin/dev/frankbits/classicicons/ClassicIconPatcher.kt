@@ -56,17 +56,7 @@ object ClassicIconPatcher : IconPathPatcher() {
         if (normalizedPath !in cachedPaths) {
             cachedPaths.add(normalizedPath)
         }
-        IconRegistry.typesFor(normalizedPath)?.let { types ->
-            if (types.isNotEmpty() &&
-                types.all { it in state.excludedFileTypes } &&
-                normalizedPath !in state.excludedIconPaths
-            ) return null
-        }
-
-        when (state.scope) {
-            IconScope.DISABLED -> return null
-            IconScope.ALL, IconScope.FILES_AND_FOLDERS -> Unit
-        }
+        if (state.scope == IconScope.DISABLED) return null
 
         // Nur eingreifen, wenn das klassische Icon wirklich existiert
         return path
@@ -94,14 +84,15 @@ object ClassicIconPatcher : IconPathPatcher() {
         path: String,
         state: ClassicIconsSettings.State,
     ): Boolean {
-        // Then check path patterns
+        // Check path patterns
         if (FILES_AND_FOLDERS.any { path.startsWith(it) }) return true
 
-        // Check if any non-excluded file type uses this path
+        // Registered FileType icons are part of the files-and-folders preset.
         IconRegistry.typesFor(path)?.let { types ->
-            if (types.isNotEmpty() && types.any { it !in state.excludedFileTypes }) return true
+            if (types.isNotEmpty()) return true
         }
 
+        // Check extra filters
         return state.extraFilters.lineSequence().map { it.trim() }.filter { it.isNotEmpty() }.any { path.contains(it) }
     }
 

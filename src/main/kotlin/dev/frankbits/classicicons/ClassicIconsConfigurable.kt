@@ -135,7 +135,7 @@ class ClassicIconsConfigurable : BoundConfigurable("Classic Icons") {
         IconRegistry.refresh()
         IconRegistry.resolveRuntimeIcons(previewClassLoaders())
         IconTableModel().also {
-            it.load(settings.excludedFileTypes, settings.excludedIconPaths)
+            it.load(settings.excludedIconPaths)
             it.setCustomIconsDir(settings.customIconsDir)
         }
     }
@@ -191,7 +191,6 @@ class ClassicIconsConfigurable : BoundConfigurable("Classic Icons") {
                                             settings.cachedRuntimeIconPaths.removeAll(removed.toSet())
                                             IconRegistry.removeRuntimePaths(removed)
                                             tableModel.load(
-                                                settings.excludedFileTypes,
                                                 settings.excludedIconPaths
                                             )
                                             tableModel.setCustomIconsDir(settings.customIconsDir)
@@ -313,7 +312,7 @@ class ClassicIconsConfigurable : BoundConfigurable("Classic Icons") {
         return panel {
             buttonsGroup("Icons:") {
                 row { radioButton("Don't use classic icons (New UI)", IconScope.DISABLED) }
-                row { radioButton("Use classic icons", IconScope.ALL) }
+                row { radioButton("Use classic icons", IconScope.ENABLED) }
             }.bind(settings::scope)
 
             group("Icon selection") {
@@ -445,25 +444,23 @@ class ClassicIconsConfigurable : BoundConfigurable("Classic Icons") {
     /** Reports changes in both standard settings and table exclusions. */
     override fun isModified(): Boolean =
         super.isModified() ||
-            tableModel.excluded() != settings.excludedFileTypes.toSet() ||
             tableModel.excludedPaths() != settings.excludedIconPaths.toSet()
 
     /** Persists exclusions, refreshes icon caches and rebuilds the registry view. */
     override fun apply() {
         super.apply()
-        settings.excludedFileTypes = tableModel.excluded().toMutableList()
         settings.excludedIconPaths = tableModel.excludedPaths().toMutableList()
         tableModel.setCustomIconsDir(settings.customIconsDir)
         ClassicIconPatcher.refreshUi()
         IconRegistry.refresh()
-        tableModel.load(settings.excludedFileTypes, settings.excludedIconPaths)
+        tableModel.load(settings.excludedIconPaths)
         tableModel.setCustomIconsDir(settings.customIconsDir)
     }
 
     /** Restores persisted values and reloads the table model. */
     override fun reset() {
         super.reset()
-        tableModel.load(settings.excludedFileTypes, settings.excludedIconPaths)
+        tableModel.load(settings.excludedIconPaths)
         tableModel.setCustomIconsDir(settings.customIconsDir)
     }
 }

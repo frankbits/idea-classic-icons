@@ -53,7 +53,6 @@ class IconTableModel : AbstractTableModel() {
     private var rows: List<Row> = emptyList()
     private var groups: List<Group> = emptyList()
     private var customIconsDir: String = ""
-    private var excludedFileTypes: Set<String> = emptySet()
     private var excludedPaths: Set<String> = emptySet()
     private val customIconStates = mutableMapOf<String, Boolean>()
     private val expandedGroups = mutableSetOf<String>()
@@ -62,8 +61,7 @@ class IconTableModel : AbstractTableModel() {
     private fun groupKey(source: GroupSource, name: String) = "${source.name}:$name"
 
     /** Rebuilds groups from the current registry while preserving expansion state. */
-    fun load(excluded: Collection<String>, excludedPaths: Collection<String> = emptyList()) {
-        excludedFileTypes = excluded.toSet()
+    fun load(excludedPaths: Collection<String> = emptyList()) {
         this.excludedPaths = excludedPaths.toSet()
 
         val byPath = IconRegistry.iconRecords().associate { record ->
@@ -82,7 +80,6 @@ class IconTableModel : AbstractTableModel() {
                 source
             )
         }
-
         groups = byPath.values.groupBy { groupKey(it.source, groupName(it.path)) }
             .map { (name, entries) ->
                 val source = entries.first().source
@@ -134,18 +131,15 @@ class IconTableModel : AbstractTableModel() {
     }
 
     private fun isClassic(entry: Entry): Boolean =
-        entry.path !in excludedPaths &&
-            (entry.fileTypes.isEmpty() || entry.fileTypes.any { it.typeName !in excludedFileTypes })
+        entry.path !in excludedPaths
 
     /** Applies a preset to the editable checkbox state without persisting it. */
     fun applyPreset(preset: Preset) {
         when (preset) {
             Preset.ALL -> {
-                excludedFileTypes = emptySet()
                 excludedPaths = emptySet()
             }
             Preset.FILES_AND_FOLDERS -> {
-                excludedFileTypes = emptySet()
                 excludedPaths = groups
                     .flatMap { it.entries }
                     .filter { entry ->
@@ -225,10 +219,8 @@ class IconTableModel : AbstractTableModel() {
     fun setEntryClassic(entry: Entry, classic: Boolean) {
         if (classic) {
             excludedPaths -= entry.path
-            excludedFileTypes -= entry.fileTypes.map { it.typeName }.toSet()
         } else {
             excludedPaths += entry.path
-            excludedFileTypes -= entry.fileTypes.map { it.typeName }.toSet()
         }
         rebuildRows()
         fireTableDataChanged()
@@ -264,17 +256,9 @@ class IconTableModel : AbstractTableModel() {
         return listOf("svg", "png").any { File(customIconsDir, "$base.$it").isFile }
     }
 
-    /** Returns excluded FileType names for persistence. */
-    fun excluded(): Set<String> =
-        groups.flatMap { group ->
-            group.entries.flatMap { entry ->
-                entry.fileTypes.filter { it.typeName in excludedFileTypes }.map { it.typeName }
-            }
-        }.toSet()
-
-    /** Returns excluded non-FileType paths for persistence. */
+    /** Returns excluded icon paths for persistence. */
     fun excludedPaths(): Set<String> =
-        groups.flatMap { it.entries.filter { !isClassic(it) }.map { it.path } }.toSet()
+        excludedPaths
 
     /** Returns the flattened row count for the legacy table representation. */
     override fun getRowCount() = rows.size
@@ -315,21 +299,15 @@ class IconTableModel : AbstractTableModel() {
         row.group?.entries?.forEach { entry ->
             if (classic) {
                 excludedPaths -= entry.path
-                excludedFileTypes -= entry.fileTypes.map { it.typeName }.toSet()
-            } else if (entry.fileTypes.isEmpty()) {
-                excludedPaths += entry.path
             } else {
-                excludedFileTypes += entry.fileTypes.map { it.typeName }.toSet()
+                excludedPaths += entry.path
             }
         }
         row.entry?.let { entry ->
             if (classic) {
                 excludedPaths -= entry.path
-                excludedFileTypes -= entry.fileTypes.map { it.typeName }.toSet()
-            } else if (entry.fileTypes.isEmpty()) {
-                excludedPaths += entry.path
             } else {
-                excludedFileTypes += entry.fileTypes.map { it.typeName }.toSet()
+                excludedPaths += entry.path
             }
         }
         rebuildRows()

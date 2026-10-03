@@ -3,7 +3,7 @@ package dev.frankbits.classicicons
 import com.intellij.openapi.components.*
 
 /** Defines the set of icon paths eligible for classic icon replacement. */
-enum class IconScope { DISABLED, ALL, FILES_AND_FOLDERS }
+enum class IconScope { DISABLED, ENABLED }
 
 /** Persistent application settings for classic icon replacement. */
 @Service(Service.Level.APP)
@@ -12,16 +12,13 @@ class ClassicIconsSettings : PersistentStateComponent<ClassicIconsSettings.State
     /** Serializable settings state stored in `classicIcons.xml`. */
     class State {
         /** Determines which icon paths the patcher may replace. */
-        var scope: IconScope = IconScope.ALL
+        var scope: IconScope = IconScope.ENABLED
 
         /** Path fragments treated as file/folder icons in the restricted scope. */
         var extraFilters: String = ""
 
         /** Directory whose relative structure mirrors original icon paths. */
         var customIconsDir: String = ""
-
-        /** File type names that remain New UI icons in the restricted scope. */
-        var excludedFileTypes: MutableList<String> = mutableListOf()
 
         /** Icon paths that are explicitly excluded from replacement. */
         var excludedIconPaths: MutableList<String> = mutableListOf()
@@ -36,9 +33,6 @@ class ClassicIconsSettings : PersistentStateComponent<ClassicIconsSettings.State
 
     /** Replaces the in-memory settings with the persisted state. */
     override fun loadState(state: State) {
-        if (state.scope == IconScope.FILES_AND_FOLDERS) {
-            state.scope = IconScope.ALL
-        }
         this.state = state
     }
 
