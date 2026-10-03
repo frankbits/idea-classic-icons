@@ -6,6 +6,7 @@ import com.intellij.openapi.project.ProjectManager
 import com.intellij.openapi.util.IconLoader
 import com.intellij.openapi.util.IconPathPatcher
 import java.io.File
+import javax.swing.Icon
 
 /**
  * Restores classic icon paths before the New UI theme patcher can replace them.
@@ -15,6 +16,17 @@ import java.io.File
  */
 object ClassicIconPatcher : IconPathPatcher() {
     private val loadingPreview = ThreadLocal.withInitial { false }
+
+    /** Loads the original icon without allowing this patcher to replace it. */
+    fun loadOriginalIcon(path: String, classLoader: ClassLoader): Icon? {
+        if (classLoader.getResource(path.removePrefix("/")) == null) return null
+        loadingPreview.set(true)
+        return try {
+            IconLoader.findIcon(path.removePrefix("/"), classLoader)
+        } finally {
+            loadingPreview.set(false)
+        }
+    }
 
     /** Path prefixes treated as file/folder icons in the restricted scope. */
     private val FILES_AND_FOLDERS = listOf("/fileTypes/", "/nodes/", "/modules/")
@@ -35,13 +47,11 @@ object ClassicIconPatcher : IconPathPatcher() {
         if (classLoader == null) return null
 
         if (classLoader.getResource(path.removePrefix("/")) == null) return null
-        val resource = classLoader.getResource(path.removePrefix("/")) ?: return null
-        loadingPreview.set(true)
-        try {
-            IconRegistry.recordPath(normalizedPath, IconLoader.findIcon(resource), classLoader)
-        } finally {
-            loadingPreview.set(false)
-        }
+        IconRegistry.recordPath(
+            normalizedPath,
+            loadOriginalIcon(normalizedPath, classLoader),
+            classLoader
+        )
         val cachedPaths = state.cachedRuntimeIconPaths
         if (normalizedPath !in cachedPaths) {
             cachedPaths.add(normalizedPath)

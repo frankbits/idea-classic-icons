@@ -2,7 +2,6 @@ package dev.frankbits.classicicons
 
 import com.intellij.openapi.actionSystem.ActionManager
 import com.intellij.openapi.fileTypes.FileTypeManager
-import com.intellij.openapi.util.IconLoader
 import com.intellij.ui.icons.IconPathProvider
 import javax.swing.Icon
 
@@ -94,10 +93,7 @@ object IconRegistry {
         }
         records.forEach { record ->
             classLoaders.asSequence()
-                .mapNotNull { loader ->
-                    val resource = loader.getResource(record.path.removePrefix("/"))
-                    resource?.let { IconLoader.findIcon(it) }
-                }
+                .mapNotNull { loader -> ClassicIconPatcher.loadOriginalIcon(record.path, loader) }
                 .firstOrNull()
                 ?.let { recordPath(record.path, it) }
         }
