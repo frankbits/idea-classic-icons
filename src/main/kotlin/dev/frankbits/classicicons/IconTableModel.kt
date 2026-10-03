@@ -52,6 +52,7 @@ class IconTableModel : AbstractTableModel() {
     private var excludedFileTypes: Set<String> = emptySet()
     private var excludedPaths: Set<String> = emptySet()
     private val expandedGroups = mutableSetOf<String>()
+    private val filterExpandedGroups = mutableSetOf<String>()
 
     private fun groupKey(source: GroupSource, name: String) = "${source.name}:$name"
 
@@ -136,12 +137,39 @@ class IconTableModel : AbstractTableModel() {
         Group(group.name, group.entries.toList(), group.source, group.expanded)
     }
 
+    /** Expands matching groups while filtering and restores automatic expansions when cleared. */
+    fun expandMatchingGroups(query: String) {
+        if (query.isBlank()) {
+            filterExpandedGroups.forEach { key ->
+                groups.firstOrNull { groupKey(it.source, it.name) == key }?.expanded = false
+                expandedGroups.remove(key)
+            }
+            filterExpandedGroups.clear()
+            return
+        }
+        groups.forEach { group ->
+            if (group.entries.any { entry ->
+                    (group.name + " " + entry.path + " " +
+                        entry.fileTypes.joinToString(" ") { it.typeName + " " + it.extension })
+                        .contains(query, ignoreCase = true)
+                }) {
+                val key = groupKey(group.source, group.name)
+                if (!group.expanded) {
+                    group.expanded = true
+                    expandedGroups.add(key)
+                    filterExpandedGroups.add(key)
+                }
+            }
+        }
+    }
+
     /** Updates expansion state for the source-specific group identified by [group]. */
     fun setGroupExpanded(group: Group, expanded: Boolean) {
         groups.firstOrNull {
             it.source == group.source && it.name == group.name
         }?.expanded = expanded
         val key = groupKey(group.source, group.name)
+        filterExpandedGroups.remove(key)
         if (expanded) expandedGroups.add(key) else expandedGroups.remove(key)
     }
 

@@ -227,7 +227,7 @@ class ClassicIconsConfigurable : BoundConfigurable("Classic Icons") {
                 listOf(header, chevron).forEach { it.addMouseListener(toggle) }
                 groupsPanel.add(header)
 
-                if (group.expanded || query.isNotEmpty()) {
+                if (group.expanded) {
                     val table = GroupTable(
                         GroupTableModel(matching, hasFileTypes, group.name, tableModel) {
                             rebuildGroups()
@@ -279,7 +279,10 @@ class ClassicIconsConfigurable : BoundConfigurable("Classic Icons") {
 
         rebuildGroups()
         filterField.document.addDocumentListener(object : DocumentAdapter() {
-            override fun textChanged(e: DocumentEvent) = rebuildGroups()
+            override fun textChanged(e: DocumentEvent) {
+                tableModel.expandMatchingGroups(filterField.text.trim())
+                rebuildGroups()
+            }
         })
 
         return panel {
