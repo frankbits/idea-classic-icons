@@ -26,38 +26,43 @@ object ClassicIconPatcher : IconPathPatcher() {
      */
     override fun patchPath(path: String, classLoader: ClassLoader?): String? {
         if (loadingPreview.get()) return null
-        if (path.contains("expui/")) return null
+        val normalizedPath = path.ensureLeadingSlash()
+        if (normalizedPath.contains("expui/")) return null
         val state = ClassicIconsSettings.getInstance().state
 
-        customIcon(path, state.customIconsDir)?.let { return it }
-        if (path in state.excludedIconPaths) return null
+        customIcon(normalizedPath, state.customIconsDir)?.let { return it }
+        if (normalizedPath in state.excludedIconPaths) return null
         if (classLoader == null) return null
 
         if (classLoader.getResource(path.removePrefix("/")) == null) return null
         val resource = classLoader.getResource(path.removePrefix("/")) ?: return null
         loadingPreview.set(true)
         try {
-            IconRegistry.recordPath(path, IconLoader.findIcon(resource), classLoader)
+            IconRegistry.recordPath(normalizedPath, IconLoader.findIcon(resource), classLoader)
         } finally {
             loadingPreview.set(false)
         }
         val cachedPaths = state.cachedRuntimeIconPaths
-        if (path !in cachedPaths) {
-            cachedPaths.add(path)
+        if (normalizedPath !in cachedPaths) {
+            cachedPaths.add(normalizedPath)
         }
-        IconRegistry.typesFor(path)?.let { types ->
+        IconRegistry.typesFor(normalizedPath)?.let { types ->
             if (types.isNotEmpty() && types.all { it in state.excludedFileTypes }) return null
         }
 
         when (state.scope) {
             IconScope.DISABLED -> return null
-            IconScope.FILES_AND_FOLDERS -> if (!isFileOrFolderIcon(path, state)) return null
+            IconScope.FILES_AND_FOLDERS ->
+                if (!isFileOrFolderIcon(normalizedPath, state)) return null
             IconScope.ALL -> Unit
         }
 
         // Nur eingreifen, wenn das klassische Icon wirklich existiert
         return path
     }
+
+    private fun String.ensureLeadingSlash(): String =
+        if (startsWith("/")) this else "/$this"
 
     /** Resolves a custom SVG or PNG override for an original icon path. */
     private fun customIcon(path: String, dir: String): String? {
