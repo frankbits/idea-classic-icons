@@ -1,6 +1,7 @@
 # Classic Icons (New UI)
 
 Das Plugin ersetzt Icons in der New UI durch die klassischen Icons oder extra hinterlegte Custom Icons.
+Unterstützt werden IntelliJ-Plattform-Versionen ab Build 242 (IntelliJ IDEA 2024.2), seit dem die New UI standardmäßig aktiviert ist.
 
 ## Einstellungen
 

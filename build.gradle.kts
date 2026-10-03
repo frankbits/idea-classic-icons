@@ -4,7 +4,7 @@ plugins {
 }
 
 group = "dev.frankbits"
-version = "0.1.0"
+version = "0.2.0"
 
 repositories {
     mavenCentral()
@@ -13,7 +13,7 @@ repositories {
 
 dependencies {
     intellijPlatform {
-        intellijIdeaCommunity("2024.3")
+        intellijIdeaCommunity("2024.2")
         pluginVerifier()
     }
 }
@@ -24,7 +24,7 @@ intellijPlatform {
     instrumentCode = false
     pluginConfiguration {
         ideaVersion {
-            sinceBuild = "243"
+            sinceBuild = "242"
             untilBuild = provider { null }
         }
     }
