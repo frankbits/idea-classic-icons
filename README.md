@@ -34,6 +34,25 @@ Ein Custom-Icon-Verzeichnis kann die Originalpfade spiegeln, z. B.
 `fileTypes/java.svg` oder `icons/MarkdownPlugin.svg`. SVG- und PNG-Dateien werden unterstützt
 und überschreiben die klassische Vorschau.
 
+## Migrations-Info:
+
+### Upgrade to `1.0.0`:
+Die Einstellungen der Pre-Release-Version `0.1.0` werden wegen der grundlegenden
+Änderungen an der Auswahl nicht vollständig übernommen:
+
+- Die Modi "**Classic icons for everything**" und "**Classic icons only for files
+  and folders**" wurden zu den Presets "**All icons**" und "**Files and folders**".  
+  Bitte das jeweilige Preset wählen und Änderungen speichern, um das Verhalten der Modi wiederherzustellen.
+- Icons mit Dateinamen, die auf `File.svg` oder `FileType.svg` enden, werden nicht mehr automatisch zu "**Files and folders**" gezählt.  
+  Falls diese Icons in der neuen Version verwendet werden sollen, muss die Auswahl der FileType-Icons gegebenenfalls angepasst werden.
+- Einschränkung der zu ersetzenden FileType-Icons werden nicht migriert.
+  Die Icon-Auswahl muss gegebenenfalls neu gesetzt werden.
+
+
+- "**Advanced: additional path filters**" wird weiterhin vom Preset "**Files and folders**" berücksichtigt.
+- "**Custom icon pack**" bleibt erhalten.
+- Wenn **Classic Icons** deaktiviert waren, bleiben sie weiterhin deaktiviert.
+
 ## Bauen
 
 ```text
