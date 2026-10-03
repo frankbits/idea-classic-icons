@@ -12,6 +12,9 @@ import javax.swing.table.AbstractTableModel
  * persistence is handled by [ClassicIconsConfigurable].
  */
 class IconTableModel : AbstractTableModel() {
+    /** UI grouping source derived from the registry metadata types. */
+    enum class GroupSource { MANAGER, RUNTIME }
+
     /** Flattened table row representation retained for the legacy model API. */
     class Row(
         val path: String,
@@ -31,15 +34,15 @@ class IconTableModel : AbstractTableModel() {
     class Entry(
         val path: String,
         val icon: Icon?,
-        val fileTypes: List<IconRegistry.FileTypeMetadata>,
-        val source: IconRegistry.Source
+        val fileTypes: List<IconRegistry.IconMetadata.FileType>,
+        val source: GroupSource
     )
 
     /** Group of entries sharing a source and first icon-path segment. */
     class Group(
         val name: String,
         val entries: List<Entry>,
-        val source: IconRegistry.Source,
+        val source: GroupSource,
         var expanded: Boolean = false
     )
 
@@ -50,7 +53,7 @@ class IconTableModel : AbstractTableModel() {
     private var excludedPaths: Set<String> = emptySet()
     private val expandedGroups = mutableSetOf<String>()
 
-    private fun groupKey(source: IconRegistry.Source, name: String) = "${source.name}:$name"
+    private fun groupKey(source: GroupSource, name: String) = "${source.name}:$name"
 
     /** Rebuilds groups from the current registry while preserving expansion state. */
     fun load(excluded: Collection<String>, excludedPaths: Collection<String> = emptyList()) {
@@ -58,12 +61,20 @@ class IconTableModel : AbstractTableModel() {
         this.excludedPaths = excludedPaths.toSet()
 
         val byPath = IconRegistry.iconRecords().associate { record ->
-            val source = if (IconRegistry.Source.MANAGER in record.sources) {
-                IconRegistry.Source.MANAGER
+            val source = if (record.metadata.any {
+                    it is IconRegistry.IconMetadata.FileType ||
+                    it is IconRegistry.IconMetadata.Action
+                }) {
+                GroupSource.MANAGER
             } else {
-                IconRegistry.Source.RUNTIME
+                GroupSource.RUNTIME
             }
-            record.path to Entry(record.path, record.icon, record.fileTypes.toList(), source)
+            record.path to Entry(
+                record.path,
+                record.icon,
+                record.metadata.filterIsInstance<IconRegistry.IconMetadata.FileType>(),
+                source
+            )
         }
 
         groups = byPath.values.groupBy { groupKey(it.source, groupName(it.path)) }

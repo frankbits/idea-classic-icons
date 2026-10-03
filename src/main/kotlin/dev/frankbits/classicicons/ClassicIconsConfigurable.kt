@@ -137,15 +137,15 @@ class ClassicIconsConfigurable : BoundConfigurable("Classic Icons") {
         fun rebuildGroups() {
             groupsPanel.removeAll()
             val query = filterField.text.trim().lowercase()
-            var displayedSource: IconRegistry.Source? = null
+            var displayedSource: IconTableModel.GroupSource? = null
 
             tableModel.groupsSnapshot().forEach { group ->
                 if (displayedSource != group.source) {
                     displayedSource = group.source
                     groupsPanel.add(JLabel(
                         when (group.source) {
-                            IconRegistry.Source.MANAGER -> "Registered icons"
-                            IconRegistry.Source.RUNTIME ->
+                            IconTableModel.GroupSource.MANAGER -> "Registered icons"
+                            IconTableModel.GroupSource.RUNTIME ->
                                 "Runtime-discovered icons (list may be incomplete)"
                         }
                     ).apply {
