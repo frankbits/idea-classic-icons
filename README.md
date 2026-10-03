@@ -11,6 +11,9 @@ Die Icon-Liste wird aus zwei Quellen aufgebaut:
 - **Runtime-discovered icons**: weitere Pfade werden registriert, wenn IntelliJ sie
   tatsächlich anfordert. Die gefundenen Pfade werden für spätere IDE-Sitzungen gespeichert;
   die Liste kann trotzdem unvollständig sein und zwischendurch veraltete Einträge enthalten.
+  Über **Validate cached runtime paths** können gespeicherte Runtime-Pfade gegen die in der
+  Sitzung bekannten ClassLoader geprüft werden. Nicht auflösbare Pfade können im Dialog
+  einzeln zur Entfernung ausgewählt werden.
 
 Die Gruppen sind nach dem ersten Pfadsegment gegliedert und können unabhängig voneinander
 auf- und zugeklappt werden. Gruppen-Checkboxen haben drei Zustände: vollständig aktiv,

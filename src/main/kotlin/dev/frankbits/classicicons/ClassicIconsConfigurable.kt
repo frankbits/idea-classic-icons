@@ -3,7 +3,11 @@ package dev.frankbits.classicicons
 import com.intellij.openapi.fileChooser.FileChooserDescriptorFactory
 import com.intellij.openapi.options.BoundConfigurable
 import com.intellij.openapi.ui.DialogPanel
+import com.intellij.openapi.ui.DialogWrapper
+import com.intellij.openapi.ui.Messages
 import com.intellij.openapi.ui.TextFieldWithBrowseButton
+import com.intellij.ide.plugins.IdeaPluginDescriptorImpl
+import com.intellij.ide.plugins.PluginManagerCore
 import com.intellij.ui.DocumentAdapter
 import com.intellij.ui.Gray
 import com.intellij.ui.JBColor
@@ -20,6 +24,7 @@ import javax.swing.Icon
 import javax.swing.SwingConstants
 import javax.swing.event.DocumentEvent
 import javax.swing.table.DefaultTableCellRenderer
+import javax.swing.JPanel
 
 /** Table model for the entries displayed inside one source-specific group. */
 private class GroupTableModel(
@@ -135,7 +140,8 @@ class ClassicIconsConfigurable : BoundConfigurable("Classic Icons") {
             layout = javax.swing.BoxLayout(this, javax.swing.BoxLayout.Y_AXIS)
         }
 
-        fun rebuildGroups() {
+        lateinit var rebuildGroups: () -> Unit
+        rebuildGroups = {
             groupsPanel.removeAll()
             val query = filterField.text.trim().lowercase()
             var displayedSource: IconTableModel.GroupSource? = null
@@ -275,6 +281,22 @@ class ClassicIconsConfigurable : BoundConfigurable("Classic Icons") {
                 }
             }
 
+            group("Runtime-discovered icon cache") {
+                row {
+                    button("Validate cached runtime paths") {
+                        validateCachedRuntimePaths { removed ->
+                            if (removed.isNotEmpty()) {
+                                settings.cachedRuntimeIconPaths.removeAll(removed.toSet())
+                                IconRegistry.removeRuntimePaths(removed)
+                                tableModel.load(settings.excludedFileTypes, settings.excludedIconPaths)
+                                tableModel.setCustomIconsDir(settings.customIconsDir)
+                                rebuildGroups()
+                            }
+                        }
+                    }.comment("Checks cached runtime paths against the platform and loaded plugin classloaders.")
+                }
+            }
+
             group("Custom icon pack") {
                 row("Folder:") {
                     val field = TextFieldWithBrowseButton()
@@ -288,10 +310,84 @@ class ClassicIconsConfigurable : BoundConfigurable("Classic Icons") {
                     )
                 }
             }
+
         }
     }
 
     private val filterField = JBTextField()
+
+    /** Validates cached runtime paths and opens the selective cleanup dialog. */
+    private fun validateCachedRuntimePaths(onRemoved: (List<String>) -> Unit) {
+        val classLoaders = mutableSetOf<ClassLoader>().apply {
+            add(ClassLoader.getSystemClassLoader())
+            Thread.currentThread().contextClassLoader?.let { add(it) }
+            addAll(IconRegistry.observedClassLoaders())
+            addAll(PluginManagerCore.loadedPlugins.mapNotNull {
+                (it as? IdeaPluginDescriptorImpl)?.pluginClassLoader
+            })
+        }
+        val unresolved = IconRegistry.unresolvedRuntimePaths(classLoaders)
+        if (unresolved.isEmpty()) {
+            Messages.showInfoMessage(
+                "All cached runtime icon paths are still resolvable.",
+                "Classic Icons"
+            )
+            return
+        }
+
+        showStalePathsDialog(unresolved)?.let(onRemoved)
+    }
+
+    /** Shows stale paths with a tri-state select-all checkbox. */
+    private fun showStalePathsDialog(paths: List<String>): List<String>? {
+        val checks = paths.map { path -> path to javax.swing.JCheckBox(path, true) }
+        val master = ThreeStateCheckBox().apply {
+            state = ThreeStateCheckBox.State.SELECTED
+            addActionListener {
+                val select = state == ThreeStateCheckBox.State.SELECTED
+                checks.forEach { it.second.isSelected = select }
+                state = if (select) {
+                    ThreeStateCheckBox.State.SELECTED
+                } else {
+                    ThreeStateCheckBox.State.NOT_SELECTED
+                }
+            }
+        }
+        checks.forEach { (_, check) ->
+            check.addActionListener {
+                val selected = checks.count { it.second.isSelected }
+                master.state = when {
+                    selected == 0 -> ThreeStateCheckBox.State.NOT_SELECTED
+                    selected == checks.size -> ThreeStateCheckBox.State.SELECTED
+                    else -> ThreeStateCheckBox.State.DONT_CARE
+                }
+            }
+        }
+
+        val panel = JPanel(java.awt.BorderLayout()).apply {
+            preferredSize = Dimension(600, minOf(400, 32 + checks.size * 24))
+            add(JPanel(java.awt.BorderLayout()).apply {
+                add(master, java.awt.BorderLayout.WEST)
+                add(javax.swing.JLabel("Select stale paths to remove"), java.awt.BorderLayout.CENTER)
+            }, java.awt.BorderLayout.NORTH)
+            add(javax.swing.JScrollPane(JPanel().apply {
+                layout = javax.swing.BoxLayout(this, javax.swing.BoxLayout.Y_AXIS)
+                checks.forEach { add(it.second) }
+            }), java.awt.BorderLayout.CENTER)
+        }
+
+        val dialog = object : DialogWrapper(null) {
+            init {
+                title = "Stale Runtime Icon Paths"
+                setOKButtonText("Remove selected")
+                init()
+            }
+
+            override fun createCenterPanel(): javax.swing.JComponent = panel
+        }
+        dialog.show()
+        return if (dialog.isOK) checks.filter { it.second.isSelected }.map { it.first } else null
+    }
 
     /** Reports changes in both standard settings and table exclusions. */
     override fun isModified(): Boolean =

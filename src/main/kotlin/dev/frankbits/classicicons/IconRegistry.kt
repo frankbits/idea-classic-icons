@@ -32,6 +32,7 @@ object IconRegistry {
     )
 
     private val iconsByPath = mutableMapOf<String, IconRecord>()
+    private val observedClassLoaders = mutableSetOf<ClassLoader>()
 
     /** Returns the registered file type names using [path], if known. */
     fun typesFor(path: String): Set<String>? =
@@ -64,6 +65,16 @@ object IconRegistry {
     fun recordPath(path: String, icon: Icon) =
         updateRecord(path, icon, IconMetadata.Runtime)
 
+    /** Records a runtime path and remembers the loader that resolved it. */
+    fun recordPath(path: String, icon: Icon?, classLoader: ClassLoader?) {
+        classLoader?.let { synchronized(iconsByPath) { observedClassLoaders += it } }
+        if (icon != null) {
+            recordPath(path, icon)
+        } else {
+            recordPath(path)
+        }
+    }
+
     /** Restores runtime paths cached by a previous IDE session. */
     fun restoreRuntimePaths(paths: Collection<String>) {
         synchronized(iconsByPath) {
@@ -84,6 +95,41 @@ object IconRegistry {
     /** Returns a snapshot suitable for displaying the registry in the settings UI. */
     fun iconRecords(): List<IconRecord> =
         synchronized(iconsByPath) { iconsByPath.values.toList() }
+
+    /** Returns runtime-only paths that cannot be resolved by any supplied loader. */
+    fun unresolvedRuntimePaths(classLoaders: Collection<ClassLoader>): List<String> {
+        val loaders = classLoaders.toSet()
+        return synchronized(iconsByPath) {
+            iconsByPath.values
+                .filter { record ->
+                    record.metadata.contains(IconMetadata.Runtime) &&
+                        record.metadata.none { it is IconMetadata.FileType || it is IconMetadata.Action }
+                }
+                .map { it.path }
+                .filter { path ->
+                    loaders.none { loader ->
+                        loader.getResource(path.removePrefix("/")) != null
+                    }
+                }
+        }
+    }
+
+    /** Removes runtime metadata and records for the selected cached paths. */
+    fun removeRuntimePaths(paths: Collection<String>) {
+        synchronized(iconsByPath) {
+            paths.forEach { path ->
+                val record = iconsByPath[path] ?: return@forEach
+                record.metadata.remove(IconMetadata.Runtime)
+                if (record.metadata.isEmpty()) {
+                    iconsByPath.remove(path)
+                }
+            }
+        }
+    }
+
+    /** Returns classloaders that have resolved registered runtime paths this session. */
+    fun observedClassLoaders(): Set<ClassLoader> =
+        synchronized(iconsByPath) { observedClassLoaders.toSet() }
 
     /** Refreshes manager-backed records and returns whether metadata changed. */
     fun refresh(): Boolean {

@@ -37,8 +37,7 @@ object ClassicIconPatcher : IconPathPatcher() {
         val resource = classLoader.getResource(path.removePrefix("/")) ?: return null
         loadingPreview.set(true)
         try {
-            IconLoader.findIcon(resource)?.let { IconRegistry.recordPath(path, it) }
-                ?: IconRegistry.recordPath(path)
+            IconRegistry.recordPath(path, IconLoader.findIcon(resource), classLoader)
         } finally {
             loadingPreview.set(false)
         }
