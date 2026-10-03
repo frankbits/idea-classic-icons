@@ -8,23 +8,44 @@ import com.intellij.openapi.util.IconPathPatcher
 import java.io.File
 
 /**
- * Die New UI mappt ORIGINALPFADE (alte Pfade, z. B. "/nodes/folder.svg" oder "/icons/MarkdownPlugin.svg")
- * per Patcher auf die neuen Pfade. Bei normalen Patchern gewinnt der erste, der nicht null liefert.
- * Wir sind vor dem Theme-Patcher installiert und geben
- *  1. für Icons aus dem eigenen Icon-Pack-Ordner eine file:-URL zurück,
- *  2. für Icons, die es im alten Pfad noch gibt, den Originalpfad zurück.
+ * Restores classic icon paths before the New UI theme patcher can replace them.
+ *
+ * Custom files take precedence. Otherwise the original path is returned only
+ * when the resource exists and the current scope/exclusion settings allow it.
  */
 object ClassicIconPatcher : IconPathPatcher() {
-    /** Anfänge der Originalpfade, die zur "Ordnerstruktur" zählen (nur im Modus "Files and folders"). */
+    private val loadingPreview = ThreadLocal.withInitial { false }
+
+    /** Path prefixes treated as file/folder icons in the restricted scope. */
     private val FILES_AND_FOLDERS = listOf("/fileTypes/", "/nodes/", "/modules/")
 
+    /**
+     * Records a requested path and returns the classic path when replacement is allowed.
+     *
+     * Returning null delegates resolution to IntelliJ's remaining patchers.
+     */
     override fun patchPath(path: String, classLoader: ClassLoader?): String? {
+        if (loadingPreview.get()) return null
         if (path.contains("expui/")) return null
         val state = ClassicIconsSettings.getInstance().state
 
         customIcon(path, state.customIconsDir)?.let { return it }
-
+        if (path in state.excludedIconPaths) return null
         if (classLoader == null) return null
+
+        if (classLoader.getResource(path.removePrefix("/")) == null) return null
+        val resource = classLoader.getResource(path.removePrefix("/")) ?: return null
+        loadingPreview.set(true)
+        try {
+            IconLoader.findIcon(resource)?.let { FileTypeIcons.recordPath(path, it) }
+                ?: FileTypeIcons.recordPath(path)
+        } finally {
+            loadingPreview.set(false)
+        }
+        FileTypeIcons.typesFor(path)?.let { types ->
+            if (types.isNotEmpty() && types.all { it in state.excludedFileTypes }) return null
+        }
+
         when (state.scope) {
             IconScope.DISABLED -> return null
             IconScope.FILES_AND_FOLDERS -> if (!isFileOrFolderIcon(path, state)) return null
@@ -32,9 +53,10 @@ object ClassicIconPatcher : IconPathPatcher() {
         }
 
         // Nur eingreifen, wenn das klassische Icon wirklich existiert
-        return if (classLoader.getResource(path.removePrefix("/")) != null) path else null
+        return path
     }
 
+    /** Resolves a custom SVG or PNG override for an original icon path. */
     private fun customIcon(path: String, dir: String): String? {
         if (dir.isBlank()) return null
         val rel = path.removePrefix("/")
@@ -48,6 +70,7 @@ object ClassicIconPatcher : IconPathPatcher() {
         return null
     }
 
+    /** Checks whether [path] belongs to the restricted files-and-folders scope. */
     private fun isFileOrFolderIcon(path: String, state: ClassicIconsSettings.State): Boolean {
         // First: if ALL file types using this icon path are excluded, don't use classic icon
         FileTypeIcons.typesFor(path)?.let { types ->
@@ -66,12 +89,14 @@ object ClassicIconPatcher : IconPathPatcher() {
         return state.extraFilters.lineSequence().map { it.trim() }.filter { it.isNotEmpty() }.any { path.contains(it) }
     }
 
+    /** Preserves the loader used by IntelliJ for the original icon resource. */
     override fun getContextClassLoader(path: String, originalClassLoader: ClassLoader?): ClassLoader? =
         originalClassLoader
 
+    /** Registers this patcher with IntelliJ's global icon loader. */
     fun install() = IconLoader.installPathPatcher(this)
 
-    /** Icon-Cache leeren und den Projektbaum neu zeichnen. */
+    /** Clears the icon cache and refreshes open project views. */
     fun refreshUi() {
         IconLoader.clearCache()
         ApplicationManager.getApplication().invokeLater {
@@ -82,8 +107,9 @@ object ClassicIconPatcher : IconPathPatcher() {
     }
 }
 
-/** Application component: wird früh beim Start instanziiert (wie bei IdeaIconPack). */
+/** Installs the patcher early during application startup. */
 class ClassicIconsComponent {
+    /** Installs [ClassicIconPatcher] when the application component is created. */
     init {
         ClassicIconPatcher.install()
     }

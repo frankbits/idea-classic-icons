@@ -2,29 +2,40 @@ package dev.frankbits.classicicons
 
 import com.intellij.openapi.components.*
 
+/** Defines the set of icon paths eligible for classic icon replacement. */
 enum class IconScope { DISABLED, ALL, FILES_AND_FOLDERS }
 
+/** Persistent application settings for classic icon replacement. */
 @Service(Service.Level.APP)
 @State(name = "ClassicIconsSettings", storages = [Storage("classicIcons.xml")])
 class ClassicIconsSettings : PersistentStateComponent<ClassicIconsSettings.State> {
+    /** Serializable settings state stored in `classicIcons.xml`. */
     class State {
+        /** Determines which icon paths the patcher may replace. */
         var scope: IconScope = IconScope.ALL
 
-        /** Zusätzliche Pfad-Teile (ein Eintrag pro Zeile), die im Modus "Files and folders" als Datei-Icons zählen. */
+        /** Path fragments treated as file/folder icons in the restricted scope. */
         var extraFilters: String = ""
 
-        /** Ordner mit eigenen Icons; Struktur spiegelt die Original-Icon-Pfade (z. B. fileTypes/java.svg). */
+        /** Directory whose relative structure mirrors original icon paths. */
         var customIconsDir: String = ""
 
-        /** Dateitypen (Name), deren Icon im Modus "Files and folders" NICHT klassisch sein soll. */
+        /** File type names that remain New UI icons in the restricted scope. */
         var excludedFileTypes: MutableList<String> = mutableListOf()
+
+        /** Icon paths that are explicitly excluded from replacement. */
+        var excludedIconPaths: MutableList<String> = mutableListOf()
     }
 
     private var state = State()
+    /** Returns the current persisted settings. */
     override fun getState(): State = state
+
+    /** Replaces the in-memory settings with the persisted state. */
     override fun loadState(state: State) { this.state = state }
 
     companion object {
+        /** Returns the application-level settings service. */
         fun getInstance(): ClassicIconsSettings = service()
     }
 }
